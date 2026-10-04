@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:relative;width:100%;height:100%;overflow:hidden;background:{{ t.bg }};font-family:{{ t.font }}">
+  <div style="position:absolute;inset:0;background-image:linear-gradient({{ t.grid }} 1px, transparent 1px),linear-gradient(90deg, {{ t.grid }} 1px, transparent 1px);background-size:64px 64px"></div>
+  <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+    <path d="M-5 72 C 18 64, 30 78, 46 70 S 72 52, 105 58" fill="none" stroke="{{ t.water }}" stroke-width="7" vector-effect="non-scaling-stroke"></path>
+    <path d="M10 -5 L 34 40 L 58 105" fill="none" stroke="{{ t.road }}" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+    <path d="M-5 30 L 40 42 L 105 36" fill="none" stroke="{{ t.road }}" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+    <path d="M70 -5 L 64 48 L 88 105" fill="none" stroke="{{ t.road }}" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+  </svg>
+  <div style="position:absolute;left:{{ cxp }};top:{{ cyp }};width:{{ sizePx }};height:{{ sizePx }};transform:translate(-50%,-50%)">
+    <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:{{ t.ring }};opacity:0.5"></div>
+    <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:{{ t.ring }};opacity:0.5"></div>
+    <sc-for list="{{ rings }}" as="r" hint-placeholder-count="4">
+      <div style="position:absolute;left:50%;top:50%;width:{{ r.d }};height:{{ r.d }};transform:translate(-50%,-50%);border:1px solid {{ t.ring }};border-radius:50%">
+        <div style="position:absolute;top:-8px;left:50%;transform:translateX(6px);font-size:11px;letter-spacing:0.06em;color:{{ t.ringText }};background:{{ t.bg }};padding:0 4px">{{ r.label }}</div>
+      </div>
+    </sc-for>
+    <sc-for list="{{ dots }}" as="d" hint-placeholder-count="0">
+      <div style="position:absolute;left:{{ d.l }};top:{{ d.t }};width:{{ d.s }};height:{{ d.s }};border-radius:50%;background:{{ d.c }};opacity:{{ d.o }};transform:translate(-50%,-50%)"></div>
+    </sc-for>
+    <div style="position:absolute;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);border:2px solid {{ t.home }};border-radius:50%;display:flex;align-items:center;justify-content:center">
+      <div style="width:4px;height:4px;border-radius:50%;background:{{ t.home }}"></div>
+    </div>
+    <sc-for list="{{ planes }}" as="p" hint-placeholder-count="0">
+      <div style="position:absolute;left:{{ p.l }};top:{{ p.t }};width:0;height:0">
+        <sc-if value="{{ p.overhead }}">
+          <div style="position:absolute;left:0;top:0;width:34px;height:34px;transform:translate(-50%,-50%);border:1.5px solid {{ p.c }};border-radius:50%;opacity:0.55"></div>
+        </sc-if>
+        <svg viewBox="0 0 24 24" width="{{ p.w }}" height="{{ p.w }}" style="position:absolute;left:0;top:0;transform:translate(-50%,-50%) rotate({{ p.hdg }}deg);overflow:visible">
+          <polygon points="12,1 21,22 12,17 3,22" fill="{{ p.c }}" stroke="{{ t.bg }}" stroke-width="1.5" stroke-linejoin="round"></polygon>
+        </svg>
+        <sc-if value="{{ p.showLabel }}">
+          <div style="position:absolute;left:14px;top:-18px;white-space:nowrap;line-height:1.15;font-size:12px;letter-spacing:0.04em;color:{{ p.c }};padding-left:6px;border-left:1px solid {{ p.c }}">
+            <div style="font-weight:600;color:{{ t.label }}">{{ p.cs }}</div>
+            <div>{{ p.fl }} {{ p.vs }}</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+  <sc-if value="{{ isReplay }}">
+    <div style="position:absolute;inset:0;background:{{ t.tint }};pointer-events:none"></div>
+  </sc-if>
+  <sc-if value="{{ showNote }}">
+    <div style="position:absolute;left:12px;bottom:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:{{ t.ringText }};opacity:0.8">map tiles · OSM</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:800,&quot;height&quot;:600},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;glass&quot;,&quot;phosphor&quot;,&quot;sectional&quot;,&quot;light&quot;],&quot;default&quot;:&quot;glass&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;replay&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:600,&quot;tsType&quot;:&quot;number&quot;},&quot;labels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;cx&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:50,&quot;tsType&quot;:&quot;number&quot;},&quot;cy&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:50,&quot;tsType&quot;:&quot;number&quot;},&quot;progress&quot;:{&quot;editor&quot;:null,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;note&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const THEMES = {
+  glass: { bg:'#0a0d12', grid:'rgba(140,160,190,0.035)', ring:'rgba(150,170,200,0.16)', ringText:'#6f7f92', road:'rgba(150,170,200,0.08)', water:'rgba(70,110,160,0.13)', home:'#e8edf2', label:'#e8edf2', low:'oklch(0.74 0.15 30)', mid:'oklch(0.82 0.14 80)', high:'oklch(0.80 0.11 215)', font:"'Barlow Condensed', sans-serif", tint:'rgba(130,100,220,0.07)', trail:1 },
+  phosphor: { bg:'#040806', grid:'rgba(90,255,150,0.04)', ring:'rgba(90,255,150,0.2)', ringText:'oklch(0.65 0.12 150)', road:'rgba(90,255,150,0.06)', water:'rgba(90,255,150,0.08)', home:'oklch(0.95 0.12 150)', label:'oklch(0.95 0.12 150)', low:'oklch(0.95 0.17 150)', mid:'oklch(0.80 0.16 150)', high:'oklch(0.64 0.13 150)', font:"'JetBrains Mono', monospace", tint:'rgba(0,0,0,0)', trail:1 },
+  sectional: { bg:'#eeebe2', grid:'rgba(30,40,60,0.05)', ring:'rgba(40,60,120,0.32)', ringText:'#4a5670', road:'rgba(120,90,60,0.18)', water:'rgba(70,120,190,0.22)', home:'#1d2430', label:'#1d2430', low:'oklch(0.55 0.2 350)', mid:'oklch(0.55 0.15 260)', high:'oklch(0.55 0.10 190)', font:"'IBM Plex Mono', monospace", tint:'rgba(0,0,0,0)', trail:0.9 },
+  light: { bg:'#eef1f4', grid:'rgba(40,60,90,0.04)', ring:'rgba(40,60,90,0.2)', ringText:'#5a6878', road:'rgba(40,60,90,0.09)', water:'rgba(70,120,190,0.16)', home:'#11161d', label:'#11161d', low:'oklch(0.58 0.17 30)', mid:'oklch(0.62 0.14 65)', high:'oklch(0.55 0.12 235)', font:"'Barlow Condensed', sans-serif", tint:'rgba(130,100,220,0.06)', trail:1 }
+};
+const P = [
+  ['EZY48KP',42,1.8,6250,300,1],['RYR7GW',160,4.6,3100,95,-1],['BAW117',300,7.4,34000,110,0],
+  ['G-OBLC',350,9.0,2400,180,0],['DLH4AB',215,12.5,21000,30,1],['KLM65C',80,18,37000,260,0],
+  ['WZZ2UK',255,27,14500,70,-1],['UAE19',120,33,39000,300,0],['TAP1PQ',20,44,28000,200,-1]
+];
+const TRACKS = [
+  ['EZY81TL',35,-4,6000,0.2],['RYR4PA',160,6,3500,0.55],['BAW29',290,10,35000,0.1],['DLH9KM',210,-14,22000,0.7],
+  ['KLM1007',75,18,36000,0.4],['WZZ54',250,-22,15000,0.85],['UAE3',120,-9,39000,0.3],['SAS12',5,24,31000,0.62],['G-JECK',340,2,2800,0.45]
+];
+const R = 30, rad = Math.PI / 180;
+class Component extends DCLogic {
+  renderVals() {
+    const t = THEMES[this.props.theme] || THEMES.glass;
+    const replay = (this.props.mode ?? 'live') === 'replay';
+    const size = this.props.size ?? 600;
+    const labels = this.props.labels ?? true;
+    const prog = this.props.progress ?? 0;
+    const col = a => a < 10000 ? t.low : a < 25000 ? t.mid : t.high;
+    const xy = (x, y) => ({ l: x + '%', t: y + '%' });
+    const k = 50 / R;
+    const planes = [], dots = [];
+    if (!replay) {
+      P.forEach(([cs, b, d, alt, hdg, vs]) => {
+        const x = 50 + d * k * Math.sin(b * rad), y = 50 - d * k * Math.cos(b * rad);
+        const elev = Math.atan(alt * 0.0003048 / d) / rad;
+        const c = col(alt), step = (alt > 20000 ? 1.4 : 0.8) * k;
+        for (let i = 1; i <= 6; i++) dots.push({ ...xy(x - i * step * Math.sin(hdg * rad), y + i * step * Math.cos(hdg * rad)), s: '4px', c, o: (0.6 - i * 0.085) * t.trail });
+        planes.push({ ...xy(x, y), hdg, c, cs, w: 20, fl: String(Math.round(alt / 100)).padStart(3, '0'), vs: vs > 0 ? '↑' : vs < 0 ? '↓' : '', overhead: elev >= 40, showLabel: labels });
+      });
+    } else {
+      TRACKS.forEach(([cs, a, off, alt, base]) => {
+        const c = col(alt), dx = Math.sin(a * rad), dy = -Math.cos(a * rad);
+        const ox = 50 + off * k * -dy, oy = 50 + off * k * dx, L = 48 * k;
+        const tt = (base + prog) % 1;
+        const at = s => ({ x: ox + (s * 2 - 1) * L * dx, y: oy + (s * 2 - 1) * L * dy });
+        for (let s = 0; s <= 1.0001; s += 0.025) {
+          const p = at(s), past = s <= tt;
+          if (!past && Math.round(s * 40) % 2) continue;
+          dots.push({ ...xy(p.x, p.y), s: past ? '3px' : '2px', c, o: past ? 0.15 + 0.6 * Math.pow(s / Math.max(tt, 0.01), 3) : 0.18 });
+        }
+        const p = at(tt);
+        planes.push({ ...xy(p.x, p.y), hdg: a, c, cs, w: 18, fl: String(Math.round(alt / 100)).padStart(3, '0'), vs: '', overhead: false, showLabel: labels });
+      });
+    }
+    return {
+      t, planes, dots, isReplay: replay && this.props.theme !== 'phosphor',
+      sizePx: size + 'px', cxp: (this.props.cx ?? 50) + '%', cyp: (this.props.cy ?? 50) + '%',
+      rings: [5, 10, 20, 30].map(r => ({ d: (r / R * 100) + '%', label: r + ' km' })),
+      showNote: this.props.note ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>
