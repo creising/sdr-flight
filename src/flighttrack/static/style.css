@@ -29,3 +29,14 @@ html, body { margin: 0; height: 100%; background: #0b0f14; color: #e6edf3;
 .tsub { font-size: 11px; color: #6b7d8f; margin-top: 2px; }
 .chart-block { margin: 18px 0; }
 .chart { background: #0e141b; border: 1px solid #1c2430; border-radius: 10px; padding: 8px; }
+
+.statslink { font-size: 11px; color: #5dd0ff; text-decoration: none; font-weight: 400; text-transform: none; letter-spacing: 0; }
+#controls { margin: 8px 0; }
+.mode { display: flex; gap: 6px; margin-bottom: 8px; }
+.mode button, .transport button { background: #121923; color: #e6edf3; border: 1px solid #1c2430;
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.mode button.active { background: #15323f; border-color: #5dd0ff; color: #5dd0ff; }
+#playback-controls { display: flex; flex-direction: column; gap: 6px; }
+#playback-controls select, #scrubber { width: 100%; }
+.transport { display: flex; gap: 6px; align-items: center; }
+#scrubber { accent-color: #5dd0ff; }
