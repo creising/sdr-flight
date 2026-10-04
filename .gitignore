@@ -6,6 +6,7 @@ venv/
 
 # Secrets & local data
 .env
+config.yaml
 *.db
 *.db-wal
 *.db-shm
