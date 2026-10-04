@@ -6,6 +6,7 @@ venv/
 
 # Secrets & local data
 .env
+config.yaml
 *.db
 *.db-wal
 *.db-shm
@@ -16,3 +17,6 @@ captures/
 
 # OS
 .DS_Store
+
+# Superpowers execution workspace
+.superpowers/
