@@ -1,0 +1,8 @@
+{
+  "now": 1712000000.0,
+  "aircraft": [
+    {"hex": "a1b2c3", "flight": "UAL123 ", "lat": 40.1, "lon": -105.1, "alt_baro": 35000, "gs": 450.0, "track": 270.0, "seen": 0.3, "rssi": -12.1},
+    {"hex": "d4e5f6", "flight": "N750QS ", "alt_baro": "ground", "seen": 1.2, "rssi": -22.0},
+    {"hex": "112233", "lat": 40.3, "lon": -105.4, "alt_baro": 12000, "seen": 0.9}
+  ]
+}
