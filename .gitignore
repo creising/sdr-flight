@@ -16,3 +16,6 @@ captures/
 
 # OS
 .DS_Store
+
+# Superpowers execution workspace
+.superpowers/
