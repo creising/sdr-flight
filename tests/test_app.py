@@ -119,18 +119,22 @@ def test_loop_records_contacts_to_store():
 
 
 def test_history_endpoint_shape():
+    import time as _t
     from flighttrack.config import Settings, Receiver, DbConfig
     s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
                  poll_interval_s=0.02, db=DbConfig(path=":memory:"))
     app = create_app(s)
     with TestClient(app) as c:
         store = app.state.store
-        cid = store.open_contact("abc", "UAL1", ts=100.0)
-        store.add_position(cid, 100.0, 40.1, -105.1, 35000, 450, 270, -12.0)
-        r = c.get("/api/history", params={"from": 0.0, "to": 200.0})
+        # Seed within the retention window — the prune loop deletes positions older
+        # than retention_days measured from real wall-clock now.
+        base = _t.time()
+        cid = store.open_contact("abc", "UAL1", ts=base)
+        store.add_position(cid, base, 40.1, -105.1, 35000, 450, 270, -12.0)
+        r = c.get("/api/history", params={"from": base - 100, "to": base + 100})
         assert r.status_code == 200
-        body = r.json()
-        assert body[0]["icao"] == "abc" and body[0]["points"][0]["lat"] == 40.1
+        body = [h for h in r.json() if h["icao"] == "abc"]
+        assert body and body[0]["points"][0]["lat"] == 40.1
 
 
 async def test_ingest_loop_survives_store_error():
