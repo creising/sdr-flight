@@ -27,6 +27,15 @@ class Dump1090Config(BaseModel):
     url: str = "http://127.0.0.1:8080/data/aircraft.json"
 
 
+class DbConfig(BaseModel):
+    path: str = "data/flighttrack.db"
+
+
+class LoggingConfig(BaseModel):
+    snapshot_interval_s: float = 15.0
+    retention_days: int = 30
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="FLIGHTTRACK_", env_nested_delimiter="__")
 
@@ -35,6 +44,8 @@ class Settings(BaseSettings):
     synthetic: SyntheticConfig = SyntheticConfig()
     replay: ReplayConfig | None = None
     dump1090: Dump1090Config = Dump1090Config()
+    db: DbConfig = DbConfig()
+    logging: LoggingConfig = LoggingConfig()
     poll_interval_s: float = 1.0
     stale_timeout_s: float = 30.0
     host: str = "127.0.0.1"

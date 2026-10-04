@@ -102,3 +102,65 @@ def test_lifespan_closes_source(monkeypatch):
     with TestClient(app):
         pass
     assert spy.closed
+
+
+def test_loop_records_contacts_to_store():
+    from flighttrack.config import Settings, Receiver, SyntheticConfig, DbConfig
+    s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0, alt_m=1600.0),
+                 synthetic=SyntheticConfig(num_aircraft=3, seed=1), poll_interval_s=0.02,
+                 db=DbConfig(path=":memory:"))
+    app = create_app(s)
+    import time as _t
+    with TestClient(app) as c:
+        _t.sleep(0.2)  # let the loop record a few ticks
+        r = c.get("/api/stats/summary")
+        assert r.status_code == 200
+        assert r.json()["sessions_total"] >= 1
+
+
+def test_history_endpoint_shape():
+    import time as _t
+    from flighttrack.config import Settings, Receiver, DbConfig
+    s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
+                 poll_interval_s=0.02, db=DbConfig(path=":memory:"))
+    app = create_app(s)
+    with TestClient(app) as c:
+        store = app.state.store
+        # Seed within the retention window — the prune loop deletes positions older
+        # than retention_days measured from real wall-clock now.
+        base = _t.time()
+        cid = store.open_contact("abc", "UAL1", ts=base)
+        store.add_position(cid, base, 40.1, -105.1, 35000, 450, 270, -12.0)
+        r = c.get("/api/history", params={"from": base - 100, "to": base + 100})
+        assert r.status_code == 200
+        body = [h for h in r.json() if h["icao"] == "abc"]
+        assert body and body[0]["points"][0]["lat"] == 40.1
+
+
+async def test_ingest_loop_survives_store_error():
+    import asyncio
+    from types import SimpleNamespace
+    from flighttrack.app import _ingest_loop, ConnectionManager
+    from flighttrack.config import Receiver
+
+    class OkSource:
+        async def poll(self):
+            return []
+
+    class BoomRecorder:
+        def __init__(self):
+            self.calls = 0
+
+        def on_tick(self, views, now):
+            self.calls += 1
+            raise RuntimeError("disk full")
+
+    rec = BoomRecorder()
+    app = SimpleNamespace(state=SimpleNamespace(
+        source=OkSource(), tracker=Tracker(Receiver(lat=0.0, lon=0.0)),
+        manager=ConnectionManager(), recorder=rec,
+        settings=SimpleNamespace(poll_interval_s=0.01)))
+    task = asyncio.create_task(_ingest_loop(app))
+    await asyncio.sleep(0.05)
+    task.cancel()
+    assert rec.calls >= 2  # kept looping despite the recorder raising each time

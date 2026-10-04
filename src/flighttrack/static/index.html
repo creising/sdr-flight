@@ -10,7 +10,30 @@
 <body>
   <div id="app">
     <aside id="sidebar">
-      <h1>Overhead</h1>
+      <h1>Overhead <a href="/stats" class="statslink">stats →</a></h1>
+      <div id="controls">
+        <div class="mode">
+          <button id="mode-live" class="active">Live</button>
+          <button id="mode-playback">Playback</button>
+        </div>
+        <div id="playback-controls" hidden>
+          <select id="window">
+            <option value="3600">Last hour</option>
+            <option value="21600">Last 6h</option>
+            <option value="86400">Last 24h</option>
+          </select>
+          <div class="transport">
+            <button id="playpause">▶</button>
+            <select id="speed">
+              <option value="1">1×</option>
+              <option value="5" selected>5×</option>
+              <option value="20">20×</option>
+            </select>
+          </div>
+          <input id="scrubber" type="range" min="0" max="1000" value="0" />
+          <div id="playtime" class="meta"></div>
+        </div>
+      </div>
       <div id="status">connecting…</div>
       <ul id="contacts"></ul>
     </aside>
