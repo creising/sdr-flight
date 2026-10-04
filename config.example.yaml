@@ -21,3 +21,10 @@ poll_interval_s: 1.0
 stale_timeout_s: 30.0
 host: 127.0.0.1
 port: 8000
+
+db:
+  path: data/flighttrack.db
+
+logging:
+  snapshot_interval_s: 15.0   # seconds between stored track points per aircraft
+  retention_days: 30          # positions older than this are pruned (contacts kept)
