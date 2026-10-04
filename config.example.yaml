@@ -1,0 +1,23 @@
+# config.example.yaml  — copy to config.yaml and edit
+source: synthetic          # synthetic | replay | dump1090
+
+receiver:                  # YOUR antenna location (used for all geometry + map center)
+  lat: 40.0150
+  lon: -105.2705
+  alt_m: 1624
+
+synthetic:
+  num_aircraft: 4
+  seed: 1
+
+# replay:                  # used when source: replay
+#   path: captures/sample-aircraft.jsonl
+#   loop: true
+
+dump1090:                  # used when source: dump1090 (the Ubuntu box)
+  url: http://127.0.0.1:8080/data/aircraft.json
+
+poll_interval_s: 1.0
+stale_timeout_s: 30.0
+host: 127.0.0.1
+port: 8000
