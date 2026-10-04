@@ -124,6 +124,10 @@ def create_app(settings: Settings) -> FastAPI:
     def index():
         return FileResponse(STATIC / "index.html")
 
+    @app.get("/stats")
+    def stats_page():
+        return FileResponse(STATIC / "stats.html")
+
     @app.websocket("/ws/live")
     async def ws_live(ws: WebSocket):
         await ws.accept()
