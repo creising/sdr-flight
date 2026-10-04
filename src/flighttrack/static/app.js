@@ -4,6 +4,11 @@ let mode = "live";
 let tracks = [];           // [{icao, callsign, points:[{ts,lat,lon,alt_ft,track_deg}]}]
 let winStart = 0, winEnd = 0, playT = 0, playing = false, speed = 5, raf = null, lastFrame = 0;
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function altColor(ft) {
   if (ft == null) return "#9aa7b2";
   if (ft < 10000) return "#ff5d5d";
@@ -25,7 +30,7 @@ function renderContacts(list) {
     const li = document.createElement("li");
     const dist = a.distance_km != null ? `${a.distance_km.toFixed(1)} km` : "—";
     const alt = a.alt_ft != null ? `${Math.round(a.alt_ft).toLocaleString()} ft` : "—";
-    li.innerHTML = `<div class="cs">${a.callsign || a.icao}</div>` +
+    li.innerHTML = `<div class="cs">${escapeHtml(a.callsign || a.icao)}</div>` +
                    `<div class="meta">${dist} · ${alt} · ${Math.round(a.elevation_deg ?? 0)}°</div>`;
     ul.appendChild(li);
   }
@@ -50,8 +55,10 @@ function connect() {
   ws = new WebSocket(`${proto}://${location.host}/ws/live`);
   ws.onmessage = (e) => { if (mode === "live") { const d = JSON.parse(e.data); renderAircraft(d.aircraft);
     document.getElementById("status").textContent = `${d.aircraft.length} aircraft · live`; } };
-  ws.onclose = () => { if (mode === "live") { document.getElementById("status").textContent = "reconnecting…";
-    setTimeout(connect, 2000); } };
+  ws.onclose = () => {
+    if (mode === "live") document.getElementById("status").textContent = "reconnecting…";
+    setTimeout(connect, 2000);   // always reconnect, even if a drop happened during playback
+  };
 }
 
 // ---- Playback ----
@@ -110,8 +117,12 @@ function setMode(next) {
   document.getElementById("playpause").textContent = "▶";
   for (const [, m] of markers) map.removeLayer(m);
   markers.clear();
-  if (next === "playback") loadWindow();
-  else document.getElementById("status").textContent = "live";
+  if (next === "playback") {
+    loadWindow();
+  } else {
+    document.getElementById("status").textContent = "live";
+    if (!ws || ws.readyState > WebSocket.OPEN) connect();  // revive a socket that closed during playback
+  }
 }
 
 async function init() {

@@ -1,6 +1,11 @@
 const ACCENT = "#5dd0ff";
 const INK_MUTED = "#8aa0b4";
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function tile(label, value, sub) {
   return `<div class="tile"><div class="tval">${value}</div>` +
          `<div class="tlabel">${label}</div>` +
@@ -9,8 +14,8 @@ function tile(label, value, sub) {
 
 async function loadTiles() {
   const s = await (await fetch("/api/stats/summary")).json();
-  const closest = s.closest ? `${s.closest.callsign || s.closest.icao} · ${s.closest.km.toFixed(1)} km` : "—";
-  const farthest = s.farthest ? `${s.farthest.callsign || s.farthest.icao} · ${s.farthest.km.toFixed(1)} km` : "—";
+  const closest = s.closest ? `${escapeHtml(s.closest.callsign || s.closest.icao)} · ${s.closest.km.toFixed(1)} km` : "—";
+  const farthest = s.farthest ? `${escapeHtml(s.farthest.callsign || s.farthest.icao)} · ${s.farthest.km.toFixed(1)} km` : "—";
   const high = s.highest_alt_ft != null ? `${Math.round(s.highest_alt_ft).toLocaleString()} ft` : "—";
   document.getElementById("tiles").innerHTML =
     tile("Seen today", s.sessions_today) +
@@ -31,12 +36,13 @@ function barChart(el, rows, labelKey, valueKey) {
     const h = (H - padB - padT) * (r[valueKey] / max);
     const x = padL + i * bw + 2, y = H - padB - h;
     const w = Math.max(1, bw - 4);
+    const lbl = escapeHtml(r[labelKey]);
     return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="${ACCENT}">` +
-           `<title>${r[labelKey]}: ${r[valueKey]}</title></rect>` +
+           `<title>${lbl}: ${r[valueKey]}</title></rect>` +
            (r[valueKey] > 0 ? `<text x="${x + w / 2}" y="${y - 4}" text-anchor="middle" ` +
              `font-size="10" fill="${INK_MUTED}">${r[valueKey]}</text>` : "") +
            `<text x="${x + w / 2}" y="${H - padB + 14}" text-anchor="middle" ` +
-             `font-size="9" fill="${INK_MUTED}">${r[labelKey]}</text>`;
+             `font-size="9" fill="${INK_MUTED}">${lbl}</text>`;
   }).join("");
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img">${bars}</svg>`;
 }

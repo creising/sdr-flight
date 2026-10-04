@@ -35,3 +35,27 @@ def test_switch_to_playback_loads_history(server_url, page):
     page.wait_for_selector("#playback-controls:not([hidden])", timeout=4000)
     # history fetched for the window; scrubbing to the end should show the playtime label
     page.wait_for_function("document.getElementById('playtime').textContent.length > 0", timeout=6000)
+
+
+def test_live_resumes_after_playback(server_url, page):
+    page.goto(server_url)
+    page.wait_for_selector(".plane", timeout=8000)
+    time.sleep(1.0)
+    page.click("#mode-playback")
+    page.wait_for_selector("#playback-controls:not([hidden])", timeout=4000)
+    page.click("#mode-live")
+    # live rendering must resume (markers reappear, status returns to live)
+    page.wait_for_selector(".plane", timeout=8000)
+    page.wait_for_function("document.getElementById('status').textContent.includes('live')", timeout=6000)
+
+
+def test_playback_empty_frame_shows_zero(server_url, page):
+    page.goto(server_url)
+    page.wait_for_selector(".plane", timeout=8000)
+    time.sleep(1.0)
+    page.click("#mode-playback")
+    page.wait_for_function("document.getElementById('playtime').textContent.length > 0", timeout=6000)
+    # scrub to the very start of the 1h window — no data there -> render an empty frame
+    page.eval_on_selector("#scrubber", "el => { el.value = 0; el.dispatchEvent(new Event('input')); }")
+    page.wait_for_function("document.getElementById('playtime').textContent.includes('0 shown')", timeout=4000)
+    assert page.locator(".plane").count() == 0          # no markers, no throw
