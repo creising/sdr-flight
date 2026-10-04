@@ -34,4 +34,8 @@ flighttrack = ["static/*", "data/*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Default run excludes e2e: sync-Playwright and pytest-asyncio cannot share one
+# process (running-event-loop conflict). Run browser tests separately:
+#   uv run pytest -m e2e
+addopts = "-m 'not e2e'"
 markers = ["e2e: browser smoke tests (require `playwright install chromium`)"]

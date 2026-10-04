@@ -21,10 +21,13 @@ Open http://127.0.0.1:8000 — synthetic planes orbit your location.
 ## Test
 
 ```bash
-uv run pytest -m "not e2e"          # fast unit/integration suite
+uv run pytest                       # fast unit/integration suite (e2e excluded by default)
 uv run playwright install chromium  # once, for the browser smoke test
-uv run pytest -m e2e                # browser smoke test
+uv run pytest -m e2e                # browser smoke test (runs in its own process)
 ```
+
+The browser smoke test must run separately: sync-Playwright and pytest-asyncio
+cannot share one process, so `pytest` excludes `e2e` by default.
 
 ## Data sources
 

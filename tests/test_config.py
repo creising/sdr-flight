@@ -31,3 +31,17 @@ def test_missing_receiver_exits(tmp_path):
     cfg.write_text("source: synthetic\n")
     with pytest.raises(SystemExit):
         load_settings(str(cfg))
+
+
+def test_malformed_yaml_exits(tmp_path):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("source: [unclosed\n")  # invalid YAML syntax
+    with pytest.raises(SystemExit):
+        load_settings(str(cfg))
+
+
+def test_non_mapping_yaml_exits(tmp_path):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("- a\n- b\n")  # a list, not a mapping
+    with pytest.raises(SystemExit):
+        load_settings(str(cfg))

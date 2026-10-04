@@ -47,6 +47,13 @@ async def test_dump1090_source_parses_ok():
     await client.aclose()
 
 
+async def test_dump1090_aclose_closes_client():
+    client = httpx.AsyncClient()
+    src = dump1090.Dump1090Source("http://x/data/aircraft.json", client=client)
+    await src.aclose()
+    assert client.is_closed
+
+
 async def test_replay_reads_frames(tmp_path):
     cap = tmp_path / "cap.jsonl"
     f0 = {"now": 0.0, "aircraft": [{"hex": "aa", "lat": 1.0, "lon": 2.0, "alt_baro": 5000, "seen": 0}]}

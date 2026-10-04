@@ -39,3 +39,6 @@ class Dump1090Source:
         except Exception as e:  # network down, bad JSON, decoder restarting
             log.warning("dump1090 poll failed: %s", e)
             return []
+
+    async def aclose(self) -> None:
+        await self._client.aclose()

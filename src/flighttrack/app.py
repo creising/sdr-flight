@@ -62,6 +62,13 @@ def create_app(settings: Settings) -> FastAPI:
             yield
         finally:
             task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            close = getattr(app.state.source, "aclose", None)
+            if close is not None:
+                await close()
 
     app = FastAPI(lifespan=lifespan)
 

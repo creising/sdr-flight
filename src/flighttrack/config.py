@@ -51,6 +51,10 @@ def load_settings(config_path: str | None = None) -> Settings:
             f"Config file not found: {path}\n"
             f"Copy config.example.yaml to config.yaml and set your receiver location."
         )
+    except yaml.YAMLError as e:
+        sys.exit(f"Invalid YAML in {path}:\n{e}")
+    if not isinstance(data, dict):
+        sys.exit(f"Config in {path} must be a YAML mapping (got {type(data).__name__}).")
     try:
         return Settings(**data)
     except ValidationError as e:
