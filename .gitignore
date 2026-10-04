@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets & local data
+.env
+*.db
+*.db-wal
+*.db-shm
+data/
+
+# Captures
+captures/
+
+# OS
+.DS_Store
