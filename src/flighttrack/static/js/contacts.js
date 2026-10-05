@@ -51,7 +51,7 @@ export function renderContacts(contacts) {
       <span class="c-call">
         <svg class="row-chevron" width="12" height="12" viewBox="0 0 24 24" style="transform:rotate(${a.track_deg ?? 0}deg)">
           <polygon points="12,1 21,22 12,17 3,22" fill="var(--alt-${cls})"/></svg>
-        <span class="cond c-name">${escapeHtml(a.callsign || a.icao)}</span>
+        <span class="cond c-name">${escapeHtml((a.callsign || a.icao || "").toUpperCase())}</span>
         <span class="c-sub">${oh}</span>
       </span>
       <span class="num c-km">${km}</span>
@@ -93,7 +93,7 @@ function cardShell(subject, selected) {
     <div class="lk-top"><span class="cond lbl">${label}</span>
       <span class="cond lk-dir"></span></div>
     <div class="lk-body">
-      <div class="lk-call cond">${escapeHtml(subject.callsign || subject.icao)}</div>
+      <div class="lk-call cond">${escapeHtml((subject.callsign || subject.icao || "").toUpperCase())}</div>
       <svg class="lk-gauge" width="72" height="72" viewBox="0 0 72 72">
         <path d="M68 66 A62 62 0 0 0 6 4" fill="none" stroke="var(--line-2)" stroke-width="2"/>
         <line x1="6" y1="66" x2="68" y2="66" stroke="var(--line-2)" stroke-width="2"/>

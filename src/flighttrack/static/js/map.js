@@ -52,7 +52,7 @@ function icon(a, opts = {}) {
     ? `<circle cx="17" cy="17" r="15" fill="none" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="3 3"/>`
     : "";
   const label = opts.labelsOn
-    ? `<div class="ac-label"><span class="al-call">${escapeHtml(a.callsign || a.icao)}</span>` +
+    ? `<div class="ac-label"><span class="al-call">${escapeHtml((a.callsign || a.icao || "").toUpperCase())}</span>` +
       `<span class="al-fl" style="color:${color}">FL${flightLevel(a.alt_ft)}</span></div>`
     : "";
   return L.divIcon({
@@ -93,7 +93,7 @@ export function renderAircraft(list, opts = {}) {
     } else {
       m.setLatLng([a.lat, a.lon]); m.setIcon(icon(a, opts));
     }
-    m.bindTooltip(escapeHtml(a.callsign || a.icao));
+    m.bindTooltip(escapeHtml((a.callsign || a.icao || "").toUpperCase()));
     const tr = trails.get(a.icao) || []; tr.push([a.lat, a.lon]);
     while (tr.length > 6) tr.shift();
     trails.set(a.icao, tr);
