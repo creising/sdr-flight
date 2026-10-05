@@ -148,13 +148,43 @@ class Store:
                 buckets.append({"label": label, "count": c})
             return buckets
 
+    def contacts_buckets(self, start_ts: float, end_ts: float, n: int) -> list[dict]:
+        if n <= 0 or end_ts <= start_ts:
+            return []
+        width = (end_ts - start_ts) / n
+        with self._lock:
+            out = []
+            for i in range(n):
+                lo = start_ts + i * width
+                hi = lo + width
+                c = self._db.execute(
+                    "SELECT count(*) c FROM contacts WHERE first_seen>=? AND first_seen<?",
+                    (lo, hi)).fetchone()["c"]
+                out.append({"start": lo, "count": c})
+            return out
+
     def top_airlines(self, limit: int = 8) -> list[dict]:
+        import re
         with self._lock:
             rows = self._db.execute(
-                "SELECT substr(callsign,1,3) a, count(*) c FROM contacts "
-                "WHERE callsign IS NOT NULL AND length(callsign)>=3 "
-                "GROUP BY a ORDER BY c DESC LIMIT ?", (limit,)).fetchall()
-            return [{"airline": r["a"], "count": r["c"]} for r in rows]
+                "SELECT callsign FROM contacts WHERE callsign IS NOT NULL AND length(callsign)>=3"
+            ).fetchall()
+        if not rows:
+            return []
+        total = len(rows)
+        airline: dict[str, int] = {}
+        ga = 0
+        for r in rows:
+            cs = r["callsign"]
+            if re.match(r"^[A-Z]{3}\d", cs):
+                airline[cs[:3]] = airline.get(cs[:3], 0) + 1
+            else:
+                ga += 1
+        ranked = sorted(airline.items(), key=lambda kv: kv[1], reverse=True)[:limit]
+        out = [{"airline": a, "count": c, "share": c / total} for a, c in ranked]
+        if ga:
+            out.append({"airline": "Private / GA", "count": ga, "share": ga / total})
+        return out
 
     def history(self, from_ts: float, to_ts: float) -> list[dict]:
         if from_ts > to_ts:

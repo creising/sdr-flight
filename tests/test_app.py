@@ -137,6 +137,18 @@ def test_history_endpoint_shape():
         assert body and body[0]["points"][0]["lat"] == 40.1
 
 
+def test_buckets_endpoint():
+    from flighttrack.config import Settings, Receiver, DbConfig
+    s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
+                 poll_interval_s=0.02, db=DbConfig(path=":memory:"))
+    app = create_app(s)
+    with TestClient(app) as c:
+        store = app.state.store
+        store.open_contact("a", "UAL1", 100.0)
+        r = c.get("/api/stats/buckets", params={"from": 100.0, "to": 200.0, "n": 1})
+        assert r.status_code == 200 and r.json()[0]["count"] == 1
+
+
 async def test_ingest_loop_survives_store_error():
     import asyncio
     from types import SimpleNamespace
