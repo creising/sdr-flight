@@ -3,7 +3,7 @@ import { getConfig } from "/static/js/api.js";
 import { state, set } from "/static/js/state.js";
 import { initMap, renderAircraft, onSelect } from "/static/js/map.js";
 import { connectLive } from "/static/js/socket.js";
-import { renderSidebar } from "/static/js/contacts.js";
+import { renderSidebar, renderContacts } from "/static/js/contacts.js";
 
 (async function () {
   initTheme();
@@ -14,6 +14,11 @@ import { renderSidebar } from "/static/js/contacts.js";
   onSelect((icao) => set({ selectedCallsign: icao }));
   connectLive((data) => {
     set({ contacts: data.aircraft });
-    if (state.mode === "live") renderAircraft(data.aircraft);
+    if (state.mode === "live") {
+      renderAircraft(data.aircraft);
+      renderContacts(data.aircraft);
+      const n = data.aircraft.length;
+      document.getElementById("status").textContent = `${n} aircraft · live`;
+    }
   });
 })();
