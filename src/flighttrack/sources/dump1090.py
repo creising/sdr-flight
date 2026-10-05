@@ -1,4 +1,6 @@
 from __future__ import annotations
+import asyncio
+import json
 import logging
 import httpx
 from flighttrack.models import RawAircraft
@@ -27,18 +29,35 @@ def parse_aircraft_json(doc: dict) -> list[RawAircraft]:
 
 
 class Dump1090Source:
+    """Reads dump1090's aircraft.json over HTTP, or directly from a local file when
+    `url` is a filesystem path or file:// URL (clean single-box deploy, no web server)."""
+
     def __init__(self, url: str, client: httpx.AsyncClient | None = None):
         self.url = url
-        self._client = client or httpx.AsyncClient(timeout=3.0)
+        if url.startswith("file://"):
+            self._path = url[len("file://"):]
+        elif url.startswith("/") or url.startswith("./"):
+            self._path = url
+        else:
+            self._path = None
+        self._client = None if self._path else (client or httpx.AsyncClient(timeout=3.0))
+
+    def _read_file(self) -> dict:
+        with open(self._path) as f:
+            return json.load(f)
 
     async def poll(self) -> list[RawAircraft]:
         try:
+            if self._path is not None:
+                doc = await asyncio.to_thread(self._read_file)
+                return parse_aircraft_json(doc)
             r = await self._client.get(self.url)
             r.raise_for_status()
             return parse_aircraft_json(r.json())
-        except Exception as e:  # network down, bad JSON, decoder restarting
+        except Exception as e:  # network down, file missing, bad JSON, decoder restarting
             log.warning("dump1090 poll failed: %s", e)
             return []
 
     async def aclose(self) -> None:
-        await self._client.aclose()
+        if self._client is not None:
+            await self._client.aclose()

@@ -54,6 +54,20 @@ async def test_dump1090_aclose_closes_client():
     assert client.is_closed
 
 
+async def test_dump1090_reads_local_file(tmp_path):
+    f = tmp_path / "aircraft.json"
+    f.write_text(FIX.read_text())
+    src = dump1090.Dump1090Source(str(f))          # a filesystem path, not an http url
+    planes = await src.poll()
+    assert len(planes) == 3
+    await src.aclose()                             # must be a no-op for the file source
+
+
+async def test_dump1090_file_missing_is_swallowed(tmp_path):
+    src = dump1090.Dump1090Source(str(tmp_path / "nope.json"))
+    assert await src.poll() == []                  # decoder not up yet -> no crash
+
+
 async def test_replay_reads_frames(tmp_path):
     cap = tmp_path / "cap.jsonl"
     f0 = {"now": 0.0, "aircraft": [{"hex": "aa", "lat": 1.0, "lon": 2.0, "alt_baro": 5000, "seen": 0}]}
