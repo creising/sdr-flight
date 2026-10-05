@@ -2,6 +2,10 @@
 name = "flighttrack"
 version = "0.1.0"
 requires-python = ">=3.11"
+license = { text = "GPL-2.0-only" }
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+]
 dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
