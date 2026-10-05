@@ -3,22 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Flight Tracker — Stats</title>
+  <meta name="theme-color" content="#0a0d12" />
+  <title>Overhead — Stats</title>
   <link rel="stylesheet" href="/static/css/tokens.css" />
+  <link rel="stylesheet" href="/static/css/stats.css" />
 </head>
 <body>
   <main id="stats">
-    <header><a href="/" class="back">← map</a><h1>Stats</h1></header>
-    <section id="tiles" class="tiles"></section>
-    <section class="chart-block">
-      <h2>Contacts per hour (last 24h)</h2>
-      <div id="perhour" class="chart"></div>
-    </section>
-    <section class="chart-block">
-      <h2>Top airlines</h2>
-      <div id="airlines" class="chart"></div>
+    <header class="st-header">
+      <a href="/" class="back">← Map</a>
+      <h1 class="cond">Stats</h1>
+    </header>
+    <section id="headline" class="headline"></section>
+    <section id="records" class="records"></section>
+    <section class="charts">
+      <div class="chart-card">
+        <h2 class="cond">Contacts per hour</h2>
+        <div id="radial"></div>
+      </div>
+      <div class="chart-card">
+        <h2 class="cond">Top airlines</h2>
+        <div id="airlines"></div>
+      </div>
     </section>
   </main>
-  <script src="/static/stats.js"></script>
+  <script type="module" src="/static/js/stats.js"></script>
 </body>
 </html>
