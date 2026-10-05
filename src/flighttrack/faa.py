@@ -8,14 +8,14 @@ def build_faa_db(master_path: str, acftref_path: str, db_path: str) -> int:
     """Join the FAA MASTER (registrations) and ACFTREF (model reference) files into a
     compact SQLite table keyed by ICAO Mode-S hex. Returns the number of rows loaded."""
     ref: dict[str, tuple[str, str]] = {}
-    with open(acftref_path, newline="") as f:
+    with open(acftref_path, newline="", encoding="utf-8-sig") as f:  # FAA files carry a BOM
         for row in csv.DictReader(f):
             code = (row.get("CODE") or "").strip()
             if code:
                 ref[code] = ((row.get("MFR") or "").strip(), (row.get("MODEL") or "").strip())
 
     rows = []
-    with open(master_path, newline="") as f:
+    with open(master_path, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
             hexc = (row.get("MODE S CODE HEX") or "").strip().lower()
             if not hexc:

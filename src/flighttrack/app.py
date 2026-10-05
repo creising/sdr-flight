@@ -88,7 +88,10 @@ def create_app(settings: Settings) -> FastAPI:
         if not aero_key:
             log.warning("FLIGHTAWARE_API_KEY not set — flight route lookups disabled")
         app.state.faa = FaaLookup(settings.faa_db_path)
-        app.state.http_client = httpx.AsyncClient(timeout=6.0)   # planespotters etc.
+        # planespotters requires a descriptive UA that includes a contact URL/email;
+        # set PLANESPOTTERS_UA to enable photos (else coverage calls may be rejected).
+        photo_ua = os.environ.get("PLANESPOTTERS_UA", "").strip() or "flighttrack/1.0 (personal ADS-B tracker)"
+        app.state.http_client = httpx.AsyncClient(timeout=6.0, headers={"User-Agent": photo_ua})
         tasks = [asyncio.create_task(_ingest_loop(app)),
                  asyncio.create_task(_prune_loop(app))]
         try:
