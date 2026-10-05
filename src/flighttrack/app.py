@@ -78,7 +78,14 @@ def create_app(settings: Settings) -> FastAPI:
         app.state.source = build_source(settings)
         app.state.store = Store(settings.db.path)
         app.state.recorder = Recorder(app.state.store, settings.logging.snapshot_interval_s)
-        app.state.enrich_client = httpx.AsyncClient(timeout=6.0)
+        import os
+        aero_key = os.environ.get("FLIGHTAWARE_API_KEY", "").strip()
+        app.state.aero_client = (
+            httpx.AsyncClient(base_url="https://aeroapi.flightaware.com/aeroapi",
+                              headers={"x-apikey": aero_key}, timeout=8.0)
+            if aero_key else None)
+        if not aero_key:
+            log.warning("FLIGHTAWARE_API_KEY not set — flight route lookups disabled")
         tasks = [asyncio.create_task(_ingest_loop(app)),
                  asyncio.create_task(_prune_loop(app))]
         try:
@@ -94,7 +101,8 @@ def create_app(settings: Settings) -> FastAPI:
             close = getattr(app.state.source, "aclose", None)
             if close is not None:
                 await close()
-            await app.state.enrich_client.aclose()
+            if app.state.aero_client is not None:
+                await app.state.aero_client.aclose()
             app.state.store.close()
 
     app = FastAPI(lifespan=lifespan)
@@ -132,15 +140,20 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/flight/{callsign}")
     async def flight(callsign: str, hex: str = Query("")):
         store = app.state.store
-        key = f"{callsign}|{hex}"
+        key = callsign
         now = time.time()
         cached = await asyncio.to_thread(store.get_cached_flight, key, now)
         if cached is not None:
             data, age = cached
-            ttl = 7 * 86400 if data.get("route_known") else 1800   # not-found refreshes every 30 min
+            # a known route is stable for the flight's duration; re-check unknowns sooner
+            ttl = 6 * 3600 if data.get("route_known") else 900
             if age <= ttl:
                 return data
-        data = await fetch_flight(callsign, hex or None, app.state.enrich_client)
+        if app.state.aero_client is None:
+            return {"callsign": callsign, "route_known": False, "lookup_ok": False,
+                    "airline": None, "origin": None, "destination": None,
+                    "aircraft_type": None, "registration": None}
+        data = await fetch_flight(callsign, app.state.aero_client)
         if data.get("lookup_ok"):          # only cache definitive answers, never transient failures
             await asyncio.to_thread(store.put_cached_flight, key, data, now)
         return data

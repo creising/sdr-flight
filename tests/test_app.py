@@ -141,7 +141,7 @@ def test_flight_endpoint_caches(monkeypatch):
     from flighttrack.config import Settings, Receiver, DbConfig
     calls = {"n": 0}
 
-    async def fake_fetch(callsign, hex, client):
+    async def fake_fetch(callsign, client):
         calls["n"] += 1
         return {"callsign": callsign, "airline": "American Airlines",
                 "origin": {"code": "PHL", "city": "Philadelphia", "name": "x"},
@@ -149,6 +149,7 @@ def test_flight_endpoint_caches(monkeypatch):
                 "aircraft_type": "A321", "registration": "N1",
                 "route_known": True, "lookup_ok": True}
 
+    monkeypatch.setenv("FLIGHTAWARE_API_KEY", "TESTKEY")   # enables the aero client
     monkeypatch.setattr("flighttrack.app.fetch_flight", fake_fetch)
     s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
                  poll_interval_s=0.02, db=DbConfig(path=":memory:"))
@@ -165,10 +166,11 @@ def test_flight_endpoint_does_not_cache_transient_failure(monkeypatch):
     from flighttrack.config import Settings, Receiver, DbConfig
     calls = {"n": 0}
 
-    async def flaky_fetch(callsign, hex, client):
+    async def flaky_fetch(callsign, client):
         calls["n"] += 1
         return {"callsign": callsign, "route_known": False, "lookup_ok": False}  # transient error
 
+    monkeypatch.setenv("FLIGHTAWARE_API_KEY", "TESTKEY")
     monkeypatch.setattr("flighttrack.app.fetch_flight", flaky_fetch)
     s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
                  poll_interval_s=0.02, db=DbConfig(path=":memory:"))

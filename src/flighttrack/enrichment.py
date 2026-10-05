@@ -4,55 +4,57 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-BASE = "https://api.adsbdb.com/v0"
+AERO_BASE = "https://aeroapi.flightaware.com/aeroapi"
 
 
 def _airport(a: dict | None) -> dict | None:
     if not isinstance(a, dict):
         return None
     return {
-        "code": a.get("iata_code") or a.get("icao_code"),
-        "city": a.get("municipality"),
+        "code": a.get("code_iata") or a.get("code_icao") or a.get("code"),
+        "city": a.get("city"),
         "name": a.get("name"),
     }
 
 
-async def fetch_flight(callsign: str, hex: str | None, client: httpx.AsyncClient) -> dict:
-    """Look up a flight's route (origin/destination + airline) by callsign and the
-    aircraft (type/registration) by ICAO hex, via the free adsbdb.com API. Any failure
-    degrades gracefully to unknown fields — never raises."""
+def _pick_active(flights: list[dict]) -> dict | None:
+    """Pick the flight that matches what we're seeing right now: prefer one that's
+    airborne (departed, not yet arrived); else the most relevant recent entry."""
+    if not flights:
+        return None
+    airborne = [f for f in flights if f.get("actual_off") and not f.get("actual_on")]
+    if airborne:
+        return airborne[-1]
+    # not airborne: prefer ones that have departed; else the last listed
+    departed = [f for f in flights if f.get("actual_off")]
+    return (departed or flights)[-1]
+
+
+async def fetch_flight(ident: str, client: httpx.AsyncClient) -> dict:
+    """Look up the ACTUAL current flight for an ident via FlightAware AeroAPI.
+    `client` must be configured with base_url=AERO_BASE and the `x-apikey` header.
+    Degrades gracefully; `lookup_ok` is True only on a definitive answer (gates caching)."""
     out = {
-        "callsign": callsign, "airline": None, "origin": None, "destination": None,
-        "aircraft_type": None, "registration": None, "route_known": False,
-        "lookup_ok": False,   # True only on a DEFINITIVE answer (found or real 404); gates caching
+        "callsign": ident, "airline": None, "origin": None, "destination": None,
+        "aircraft_type": None, "registration": None, "route_known": False, "lookup_ok": False,
     }
     try:
-        r = await client.get(f"{BASE}/callsign/{callsign}")
+        r = await client.get(f"/flights/{ident}")
         if r.status_code == 200:
             out["lookup_ok"] = True
-            fr = r.json().get("response")
-            fr = fr.get("flightroute") if isinstance(fr, dict) else None
-            if fr:
-                out["route_known"] = True
-                out["airline"] = (fr.get("airline") or {}).get("name")
-                out["origin"] = _airport(fr.get("origin"))
-                out["destination"] = _airport(fr.get("destination"))
-        elif r.status_code == 404:
-            out["lookup_ok"] = True   # definitively not in the route DB
-        # 429 / 5xx / other -> leave lookup_ok False (transient; retry next time)
-    except Exception as e:  # network error / timeout -> transient, do not cache
-        log.warning("adsbdb route lookup failed for %s: %s", callsign, e)
-
-    if hex:
-        try:
-            r = await client.get(f"{BASE}/aircraft/{hex}")
-            if r.status_code == 200:
-                ac = r.json().get("response")
-                ac = ac.get("aircraft") if isinstance(ac, dict) else None
-                if ac:
-                    out["aircraft_type"] = ac.get("type")
-                    out["registration"] = ac.get("registration")
-        except Exception as e:
-            log.warning("adsbdb aircraft lookup failed for %s: %s", hex, e)
-
+            f = _pick_active(r.json().get("flights", []))
+            if f:
+                out["origin"] = _airport(f.get("origin"))
+                out["destination"] = _airport(f.get("destination"))
+                out["route_known"] = bool(out["origin"] and out["destination"])
+                out["aircraft_type"] = f.get("aircraft_type")
+                out["registration"] = f.get("registration")
+                out["airline"] = f.get("operator_iata") or f.get("operator")
+        elif r.status_code in (400, 404):
+            out["lookup_ok"] = True   # definitively no such ident
+        # 401/403 (bad key), 429 (rate limit), 5xx -> transient: leave lookup_ok False
+        else:
+            log.warning("aeroapi %s for %s", r.status_code, ident)
+    except Exception as e:  # network/timeout -> transient, do not cache
+        log.warning("aeroapi lookup failed for %s: %s", ident, e)
     return out

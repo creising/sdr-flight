@@ -1,62 +1,62 @@
 import httpx
 import pytest
-from flighttrack.enrichment import fetch_flight
+from flighttrack.enrichment import fetch_flight, AERO_BASE
 
-ROUTE_OK = {"response": {"flightroute": {
-    "callsign": "AAL2322",
-    "airline": {"name": "American Airlines", "icao": "AAL"},
-    "origin": {"iata_code": "PHL", "icao_code": "KPHL", "municipality": "Philadelphia",
-               "name": "Philadelphia International Airport"},
-    "destination": {"iata_code": "TPA", "icao_code": "KTPA", "municipality": "Tampa",
-                    "name": "Tampa International Airport"},
-}}}
-AIRCRAFT_OK = {"response": {"aircraft": {"type": "Airbus A321", "registration": "N123AA"}}}
+FLIGHTS_OK = {"flights": [
+    {  # scheduled-only future leg (no actual_off) — should NOT be picked
+        "ident": "SWA1278", "aircraft_type": "B737",
+        "origin": {"code_iata": "XXX", "name": "Should Not Pick", "city": "Nowhere"},
+        "destination": {"code_iata": "YYY", "name": "Nope", "city": "Nowhere"},
+        "actual_off": None, "actual_on": None,
+    },
+    {  # currently airborne — should be picked
+        "ident": "SWA1278", "operator": "SWA", "operator_iata": "WN",
+        "registration": "N8888A", "aircraft_type": "B738",
+        "origin": {"code_iata": "BNA", "code_icao": "KBNA", "name": "Nashville Intl", "city": "Nashville"},
+        "destination": {"code_iata": "MCO", "code_icao": "KMCO", "name": "Orlando Intl", "city": "Orlando"},
+        "actual_off": "2026-10-05T01:00:00Z", "actual_on": None,
+    },
+]}
 
 
-def _transport(route_status=200, route_body=ROUTE_OK, ac_status=200, ac_body=AIRCRAFT_OK):
+def _client(status=200, body=FLIGHTS_OK):
     def handler(req: httpx.Request) -> httpx.Response:
-        if "/callsign/" in req.url.path:
-            return httpx.Response(route_status, json=route_body)
-        if "/aircraft/" in req.url.path:
-            return httpx.Response(ac_status, json=ac_body)
-        return httpx.Response(404)
-    return httpx.MockTransport(handler)
+        assert req.headers.get("x-apikey") == "TESTKEY"      # key sent as header
+        assert "/flights/" in req.url.path
+        return httpx.Response(status, json=body)
+    return httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url=AERO_BASE,
+                             headers={"x-apikey": "TESTKEY"})
 
 
-async def test_fetch_flight_route_and_aircraft():
-    client = httpx.AsyncClient(transport=_transport())
-    r = await fetch_flight("AAL2322", "ad4c2a", client)
-    assert r["route_known"] is True
-    assert r["lookup_ok"] is True
-    assert r["airline"] == "American Airlines"
-    assert r["origin"]["code"] == "PHL" and r["origin"]["city"] == "Philadelphia"
-    assert r["destination"]["code"] == "TPA"
-    assert r["aircraft_type"] == "Airbus A321" and r["registration"] == "N123AA"
+async def test_fetch_flight_picks_airborne_flight():
+    client = _client()
+    r = await fetch_flight("SWA1278", client)
+    assert r["lookup_ok"] is True and r["route_known"] is True
+    assert r["origin"]["code"] == "BNA" and r["origin"]["city"] == "Nashville"
+    assert r["destination"]["code"] == "MCO"
+    assert r["aircraft_type"] == "B738" and r["registration"] == "N8888A"
+    assert r["airline"] in ("WN", "SWA")
     await client.aclose()
 
 
-async def test_fetch_flight_definitive_not_found_is_lookup_ok():
-    # a real 404 ("unknown callsign") is a definitive answer -> cacheable
-    client = httpx.AsyncClient(transport=_transport(
-        route_status=404, route_body={"response": "unknown callsign"},
-        ac_status=404, ac_body={"response": "unknown aircraft"}))
-    r = await fetch_flight("ZZZ999", "000000", client)
-    assert r["route_known"] is False and r["lookup_ok"] is True
-    assert r["origin"] is None and r["aircraft_type"] is None
+async def test_fetch_flight_404_is_definitive():
+    client = _client(status=404, body={"title": "not found"})
+    r = await fetch_flight("ZZZ999", client)
+    assert r["lookup_ok"] is True and r["route_known"] is False
     await client.aclose()
 
 
-async def test_fetch_flight_transient_error_not_cacheable():
+async def test_fetch_flight_401_is_transient_not_cacheable():
+    client = _client(status=401, body={"title": "bad key"})
+    r = await fetch_flight("SWA1278", client)
+    assert r["lookup_ok"] is False   # auth/rate/5xx -> don't cache
+    await client.aclose()
+
+
+async def test_fetch_flight_network_error_not_cacheable():
     def boom(req): raise httpx.ConnectError("down")
-    client = httpx.AsyncClient(transport=httpx.MockTransport(boom))
-    r = await fetch_flight("AAL2322", "ad4c2a", client)
-    assert r["route_known"] is False and r["lookup_ok"] is False   # don't cache a transient failure
-    assert r["callsign"] == "AAL2322"
-    await client.aclose()
-
-
-async def test_fetch_flight_rate_limited_not_cacheable():
-    client = httpx.AsyncClient(transport=_transport(route_status=429, route_body={}))
-    r = await fetch_flight("AAL2322", "ad4c2a", client)
-    assert r["lookup_ok"] is False   # 429 is transient -> retry later, don't cache
+    client = httpx.AsyncClient(transport=httpx.MockTransport(boom), base_url=AERO_BASE,
+                               headers={"x-apikey": "TESTKEY"})
+    r = await fetch_flight("SWA1278", client)
+    assert r["lookup_ok"] is False and r["callsign"] == "SWA1278"
     await client.aclose()
