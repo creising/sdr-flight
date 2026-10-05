@@ -36,6 +36,18 @@ def test_stale_aircraft_drop_out(rx):
     assert icaos == {"bbb"}
 
 
+def test_raw_for_and_to_json_excludes_raw(rx):
+    t = Tracker(rx, stale_timeout_s=30)
+    r = RawAircraft(icao="aaa", callsign="Taaa", lat=40.5, lon=-105.0, alt_ft=30000,
+                    ground_speed_kt=400, track_deg=90, seen_s=0.0, rssi=-10.0,
+                    raw={"hex": "aaa", "category": "A3", "squawk": "1200"})
+    t.update([r], now=100.0)
+    assert t.raw_for("aaa")["category"] == "A3"
+    assert t.raw_for("zzz") is None
+    j = t.to_json()
+    assert "raw" not in j["aircraft"][0]   # the full stream stays lean
+
+
 def test_positionless_excluded_from_json_but_in_snapshot(rx):
     t = Tracker(rx, stale_timeout_s=30)
     noposn = RawAircraft(icao="ghost", callsign=None, lat=None, lon=None, alt_ft=None,

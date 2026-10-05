@@ -176,6 +176,10 @@ def create_app(settings: Settings) -> FastAPI:
             await asyncio.to_thread(store.put_cached_flight, key, {"photo": res["photo"]}, now)
         return res["photo"]
 
+    @app.get("/api/aircraft/{hex}")
+    def aircraft_raw(hex: str):
+        return app.state.tracker.raw_for(hex) or {}
+
     @app.get("/api/flight/{callsign}")
     async def flight(callsign: str, hex: str = Query("")):
         now = time.time()

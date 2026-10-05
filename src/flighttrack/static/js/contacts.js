@@ -1,5 +1,6 @@
 import { set, state } from "/static/js/state.js";
 import { escapeHtml, altClass, isOverhead, lookupSubject, compass16 } from "/static/js/util.js";
+import { openRaw } from "/static/js/rawinfo.js";
 
 export function renderSidebar(container, onMode) {
   container.innerHTML = `
@@ -82,6 +83,8 @@ function renderLookup(subject, selected = false) {
   if (structKey !== lkKey) {
     lkKey = structKey;
     el.innerHTML = cardShell(subject, selected);
+    el.querySelector(".lk-more")?.addEventListener("click",
+      () => openRaw(subject.icao, subject.callsign || subject.icao));
   }
   updateTelemetry(el, subject);   // in-place numeric/colour/gauge updates every tick
 }
@@ -112,7 +115,7 @@ function cardShell(subject, selected) {
       <div><span class="cond lbl">SQUAWK</span><span class="num v2 v-sq"></span></div>
       <div><span class="cond lbl">SIGNAL</span><span class="v2 v-sig"></span></div>
     </div>
-    ${selected ? renderRoute(subject) : ""}`;
+    ${selected ? `<button class="lk-more cond">ⓘ&nbsp; RAW ADS-B DATA</button>${renderRoute(subject)}` : ""}`;
 }
 
 function updateTelemetry(el, s) {

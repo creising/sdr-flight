@@ -15,6 +15,7 @@ class RawAircraft:
     rssi: float | None
     baro_rate: float | None = None   # vertical rate, ft/min (+ climb / - descent)
     squawk: str | None = None        # transponder code
+    raw: dict | None = None          # the full source record (for the "more info" dialog)
 
 
 @dataclass
@@ -30,6 +31,7 @@ class AircraftView:
     rssi: float | None
     baro_rate: float | None = None
     squawk: str | None = None
+    raw: dict | None = None
     distance_km: float | None = None
     bearing_deg: float | None = None
     elevation_deg: float | None = None

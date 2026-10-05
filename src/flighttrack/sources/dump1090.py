@@ -27,7 +27,8 @@ def parse_aircraft_json(doc: dict) -> list[RawAircraft]:
             ground_speed_kt=a.get("gs"), track_deg=a.get("track"),
             seen_s=float(a.get("seen", 0.0)), rssi=a.get("rssi"),
             baro_rate=a.get("baro_rate") if a.get("baro_rate") is not None else a.get("geom_rate"),
-            squawk=str(sq) if sq is not None else None))
+            squawk=str(sq) if sq is not None else None,
+            raw=a))
     return out
 
 

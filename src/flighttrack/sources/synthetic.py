@@ -40,16 +40,27 @@ class SyntheticSource:
             if p["positionless"]:
                 out.append(RawAircraft(
                     icao=p["icao"], callsign=p["callsign"], lat=None, lon=None,
-                    alt_ft=None, ground_speed_kt=None, track_deg=None, seen_s=0.0, rssi=-20.0))
+                    alt_ft=None, ground_speed_kt=None, track_deg=None, seen_s=0.0, rssi=-20.0,
+                    raw={"hex": p["icao"], "flight": p["callsign"], "seen": 0.0, "rssi": -20.0,
+                         "messages": 12, "mlat": [], "tisb": []}))
                 continue
             ang = p["phase"] + p["angular_speed"] * t
             dlat = (p["radius_km"] / 111.0) * math.sin(ang)
             dlon = (p["radius_km"] / (111.0 * math.cos(math.radians(self.rx.lat)))) * math.cos(ang)
             track = (math.degrees(ang) + 90.0) % 360.0
+            lat, lon = self.rx.lat + dlat, self.rx.lon + dlon
+            raw = {
+                "hex": p["icao"], "flight": p["callsign"], "lat": lat, "lon": lon,
+                "alt_baro": p["alt_ft"], "alt_geom": p["alt_ft"] + 350,
+                "gs": round(p["gs"], 1), "track": round(track, 1), "baro_rate": p["baro_rate"],
+                "squawk": p["squawk"], "category": "A3", "nav_altitude_mcp": 24000,
+                "nav_modes": ["autopilot", "tcas"], "nav_qnh": 1013.6, "emergency": "none",
+                "nic": 8, "nac_p": 10, "sil": 3, "rssi": -15.0, "seen": 0.0, "seen_pos": 0.1,
+                "messages": 420, "version": 2, "mlat": [], "tisb": [],
+            }
             out.append(RawAircraft(
-                icao=p["icao"], callsign=p["callsign"],
-                lat=self.rx.lat + dlat, lon=self.rx.lon + dlon,
+                icao=p["icao"], callsign=p["callsign"], lat=lat, lon=lon,
                 alt_ft=float(p["alt_ft"]), ground_speed_kt=float(p["gs"]),
                 track_deg=track, seen_s=0.0, rssi=-15.0,
-                baro_rate=p["baro_rate"], squawk=p["squawk"]))
+                baro_rate=p["baro_rate"], squawk=p["squawk"], raw=raw))
         return out

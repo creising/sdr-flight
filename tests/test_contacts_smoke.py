@@ -47,6 +47,19 @@ def test_lookup_picks_highest_elevation(server_url, page):
     assert call == "HIGH9"
 
 
+def test_raw_adsb_dialog_opens(server_url, page):
+    page.goto(server_url)
+    page.wait_for_selector(".contact-row", timeout=8000)
+    page.locator(".contact-row").first.click()
+    page.wait_for_selector(".lk-more", timeout=6000)
+    page.click(".lk-more")
+    page.wait_for_selector("#rawdialog .raw-row", timeout=6000)
+    content = page.locator("#rawdialog").inner_text()
+    assert "category" in content or "squawk" in content   # full raw fields present
+    page.click(".raw-close")
+    assert page.locator("#rawdialog").is_visible() is False
+
+
 def test_contacts_escape_xss(server_url, page):
     page.goto(server_url)
     page.wait_for_selector("#contacts", timeout=8000)

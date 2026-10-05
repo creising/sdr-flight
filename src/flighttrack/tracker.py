@@ -27,8 +27,14 @@ class Tracker:
         return positioned + positionless
 
     def to_json(self) -> dict:
+        def lean(v):
+            return {k: val for k, val in asdict(v).items() if k != "raw"}   # keep the full WS stream small
         return {
             "now": self._now,
             "receiver": {"lat": self.rx.lat, "lon": self.rx.lon, "alt_m": self.rx.alt_m},
-            "aircraft": [asdict(v) for v in self.snapshot() if v.lat is not None],
+            "aircraft": [lean(v) for v in self.snapshot() if v.lat is not None],
         }
+
+    def raw_for(self, icao: str) -> dict | None:
+        entry = self._live.get(icao)
+        return entry[1].raw if entry else None
