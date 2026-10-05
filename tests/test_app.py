@@ -150,7 +150,7 @@ def test_flight_endpoint_caches(monkeypatch):
                 "route_known": True, "lookup_ok": True}
 
     async def no_photo(hex, client):
-        return None
+        return {"ok": True, "photo": None}
 
     monkeypatch.setenv("FLIGHTAWARE_API_KEY", "TESTKEY")   # enables the aero client
     monkeypatch.setattr("flighttrack.app.fetch_flight", fake_fetch)
@@ -175,7 +175,7 @@ def test_flight_endpoint_does_not_cache_transient_failure(monkeypatch):
         return {"callsign": callsign, "route_known": False, "lookup_ok": False}  # transient error
 
     async def no_photo(hex, client):
-        return None
+        return {"ok": True, "photo": None}
 
     monkeypatch.setenv("FLIGHTAWARE_API_KEY", "TESTKEY")
     monkeypatch.setattr("flighttrack.app.fetch_flight", flaky_fetch)
@@ -204,7 +204,7 @@ def test_flight_endpoint_merges_faa_and_photo(tmp_path, monkeypatch):
                 "aircraft_type": "B77W", "registration": None}
 
     async def fake_photo(hex, client):
-        return {"thumbnail": "https://t/x.jpg", "link": "https://p/x", "credit": "Jane"}
+        return {"ok": True, "photo": {"thumbnail": "https://t/x.jpg", "link": "https://p/x", "credit": "Jane"}}
 
     monkeypatch.setenv("FLIGHTAWARE_API_KEY", "K")
     monkeypatch.setattr("flighttrack.app.fetch_flight", fake_route)

@@ -19,22 +19,32 @@ def _photo_client(status=200, body=PHOTO_OK):
 
 async def test_fetch_photo_ok():
     c = _photo_client()
-    p = await fetch_photo("a1b2c3", c)
-    assert p["thumbnail"] == "https://t/large.jpg" and p["credit"] == "Jane Doe"
-    assert p["link"].startswith("https://www.planespotters.net/")
+    r = await fetch_photo("a1b2c3", c)
+    assert r["ok"] is True and r["photo"]["thumbnail"] == "https://t/large.jpg"
+    assert r["photo"]["credit"] == "Jane Doe"
+    assert r["photo"]["link"].startswith("https://www.planespotters.net/")
     await c.aclose()
 
 
-async def test_fetch_photo_none_when_empty():
+async def test_fetch_photo_empty_is_definitive():
     c = _photo_client(body={"photos": []})
-    assert await fetch_photo("x", c) is None
+    r = await fetch_photo("x", c)
+    assert r["ok"] is True and r["photo"] is None   # 200 + no photos -> cacheable "no photo"
     await c.aclose()
 
 
-async def test_fetch_photo_error_graceful():
+async def test_fetch_photo_403_not_cacheable():
+    c = _photo_client(status=403, body={"error": "bad UA"})
+    r = await fetch_photo("x", c)
+    assert r["ok"] is False and r["photo"] is None   # transient/config -> do not cache
+    await c.aclose()
+
+
+async def test_fetch_photo_error_not_cacheable():
     def boom(req): raise httpx.ConnectError("x")
     c = httpx.AsyncClient(transport=httpx.MockTransport(boom))
-    assert await fetch_photo("x", c) is None
+    r = await fetch_photo("x", c)
+    assert r["ok"] is False and r["photo"] is None
     await c.aclose()
 
 FLIGHTS_OK = {"flights": [

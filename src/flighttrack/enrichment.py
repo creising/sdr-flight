@@ -33,22 +33,25 @@ def _pick_active(flights: list[dict]) -> dict | None:
 PLANESPOTTERS = "https://api.planespotters.net/pub/photos/hex"
 
 
-async def fetch_photo(hex: str, client: httpx.AsyncClient) -> dict | None:
+async def fetch_photo(hex: str, client: httpx.AsyncClient) -> dict:
     """Fetch a photo of the airframe from planespotters.net (free; attribution required).
-    Returns {thumbnail, link, credit} or None. `client` is a plain httpx client."""
+    Returns {"ok": bool, "photo": {thumbnail, link, credit} | None}. `ok` is True only on a
+    definitive 200 response (gates caching), so a transient 403/error is retried next time."""
     try:
         r = await client.get(f"{PLANESPOTTERS}/{hex}")
         if r.status_code == 200:
+            photo = None
             photos = r.json().get("photos", [])
             if photos:
                 p = photos[0]
                 thumb = (p.get("thumbnail_large") or p.get("thumbnail") or {}).get("src")
                 if thumb:
-                    return {"thumbnail": thumb, "link": p.get("link"),
-                            "credit": p.get("photographer")}
+                    photo = {"thumbnail": thumb, "link": p.get("link"),
+                             "credit": p.get("photographer")}
+            return {"ok": True, "photo": photo}
     except Exception as e:
         log.warning("planespotters lookup failed for %s: %s", hex, e)
-    return None
+    return {"ok": False, "photo": None}
 
 
 async def fetch_flight(ident: str, client: httpx.AsyncClient) -> dict:

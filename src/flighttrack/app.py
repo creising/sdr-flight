@@ -171,9 +171,10 @@ def create_app(settings: Settings) -> FastAPI:
             ttl = 30 * 86400 if data.get("photo") else 3600   # recheck photoless hourly
             if age <= ttl:
                 return data.get("photo")
-        photo = await fetch_photo(hex, app.state.http_client)
-        await asyncio.to_thread(store.put_cached_flight, key, {"photo": photo}, now)
-        return photo
+        res = await fetch_photo(hex, app.state.http_client)
+        if res["ok"]:                       # never cache a transient 403/error as "no photo"
+            await asyncio.to_thread(store.put_cached_flight, key, {"photo": res["photo"]}, now)
+        return res["photo"]
 
     @app.get("/api/flight/{callsign}")
     async def flight(callsign: str, hex: str = Query("")):
