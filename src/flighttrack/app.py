@@ -11,8 +11,10 @@ from fastapi.staticfiles import StaticFiles
 from flighttrack.config import Settings
 from flighttrack.sources.factory import build_source
 from flighttrack.tracker import Tracker
+import httpx
 from flighttrack.store import Store
 from flighttrack.recorder import Recorder
+from flighttrack.enrichment import fetch_flight
 
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -76,6 +78,7 @@ def create_app(settings: Settings) -> FastAPI:
         app.state.source = build_source(settings)
         app.state.store = Store(settings.db.path)
         app.state.recorder = Recorder(app.state.store, settings.logging.snapshot_interval_s)
+        app.state.enrich_client = httpx.AsyncClient(timeout=6.0)
         tasks = [asyncio.create_task(_ingest_loop(app)),
                  asyncio.create_task(_prune_loop(app))]
         try:
@@ -91,6 +94,7 @@ def create_app(settings: Settings) -> FastAPI:
             close = getattr(app.state.source, "aclose", None)
             if close is not None:
                 await close()
+            await app.state.enrich_client.aclose()
             app.state.store.close()
 
     app = FastAPI(lifespan=lifespan)
@@ -124,6 +128,21 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/history")
     async def history(from_: float = Query(..., alias="from"), to: float = Query(...)):
         return await asyncio.to_thread(app.state.store.history, from_, to)
+
+    @app.get("/api/flight/{callsign}")
+    async def flight(callsign: str, hex: str = Query("")):
+        store = app.state.store
+        key = f"{callsign}|{hex}"
+        now = time.time()
+        cached = await asyncio.to_thread(store.get_cached_flight, key, now)
+        if cached is not None:
+            data, age = cached
+            ttl = 7 * 86400 if data.get("route_known") else 3600   # refresh unknowns hourly
+            if age <= ttl:
+                return data
+        data = await fetch_flight(callsign, hex or None, app.state.enrich_client)
+        await asyncio.to_thread(store.put_cached_flight, key, data, now)
+        return data
 
     @app.get("/")
     def index():
