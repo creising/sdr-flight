@@ -1,7 +1,7 @@
 import { set } from "/static/js/state.js";
 import { escapeHtml, altClass, isOverhead, lookupSubject, compass16 } from "/static/js/util.js";
 
-export function renderSidebar(container) {
+export function renderSidebar(container, onMode) {
   container.innerHTML = `
     <header class="sb-header">
       <span class="wordmark cond">OVERHEAD</span>
@@ -24,17 +24,8 @@ export function renderSidebar(container) {
       <span><i class="sw" style="background:var(--alt-high)"></i>≥25k</span>
     </footer>`;
   container.querySelectorAll(".mode-seg").forEach((b) => {
-    b.addEventListener("click", () => setMode(container, b.dataset.mode));
+    b.addEventListener("click", () => onMode && onMode(b.dataset.mode));
   });
-}
-
-export function setMode(container, mode) {
-  set({ mode });
-  container.querySelectorAll(".mode-seg").forEach((b) =>
-    b.classList.toggle("active", b.dataset.mode === mode));
-  container.setAttribute("data-mode", mode);
-  const app = document.getElementById("app");
-  if (app) app.setAttribute("data-mode", mode);
 }
 
 export function renderContacts(contacts) {

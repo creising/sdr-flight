@@ -100,3 +100,36 @@ export function renderAircraft(list) {
 export function onSelect(cb) { selectCb = cb; }
 export function panTo(icao) { const m = markers.get(icao); if (m && map) map.panTo(m.getLatLng()); }
 export function getMap() { return map; }
+
+export function clearAircraft() {
+  for (const [, m] of markers) acLayer.removeLayer(m);
+  markers.clear();
+  for (const [, ms] of trailMarkers) for (const t of ms) trailLayer.removeLayer(t);
+  trailMarkers.clear(); trails.clear();
+}
+
+function interp(points, t) {
+  if (!points.length || t < points[0].ts || t > points[points.length - 1].ts) return null;
+  let lo = points[0];
+  for (const p of points) {
+    if (p.ts === t) return p;
+    if (p.ts > t) {
+      const f = (t - lo.ts) / (p.ts - lo.ts || 1);
+      return { lat: lo.lat + (p.lat - lo.lat) * f, lon: lo.lon + (p.lon - lo.lon) * f,
+               alt_ft: lo.alt_ft, track_deg: p.track_deg ?? lo.track_deg };
+    }
+    lo = p;
+  }
+  return lo;
+}
+
+export function renderReplay(tracks, t) {
+  const list = [];
+  for (const tr of tracks) {
+    const p = interp(tr.points, t);
+    if (p) list.push({ icao: tr.icao, callsign: tr.callsign, lat: p.lat, lon: p.lon,
+                       alt_ft: p.alt_ft, track_deg: p.track_deg });
+  }
+  renderAircraft(list);
+  return list.length;
+}

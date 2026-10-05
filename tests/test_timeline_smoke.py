@@ -31,3 +31,32 @@ def test_live_strip_renders(server_url, page):
     page.wait_for_selector("#timeline .bar", timeout=8000)
     assert page.locator("#timeline .bar").count() >= 1
     assert page.locator("#timeline .now-pill").count() == 1
+
+
+def test_scrub_enters_replay_and_back(server_url, page):
+    page.goto(server_url)
+    page.wait_for_selector("#timeline .tl-hist", timeout=8000)
+    time.sleep(1.0)  # accumulate some history
+    page.locator("#timeline .tl-hist").click(position={"x": 60, "y": 20})
+    page.wait_for_selector('#app[data-mode="replay"]', timeout=5000)
+    assert page.locator(".back-to-live").count() == 1
+    assert page.locator(".tl-clock").count() == 1
+    # window chip keeps us in replay
+    page.locator('.win-chip[data-win="21600"]').click()
+    assert page.locator('#app[data-mode="replay"]').count() == 1
+    # back to live
+    page.locator(".back-to-live").click()
+    page.wait_for_selector('#app[data-mode="live"]', timeout=5000)
+    assert page.locator("#timeline .now-pill").count() == 1
+
+
+def test_scrub_to_empty_region_no_error(server_url, page):
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.goto(server_url)
+    page.wait_for_selector("#timeline .tl-hist", timeout=8000)
+    time.sleep(0.5)
+    page.locator("#timeline .tl-hist").click(position={"x": 2, "y": 20})  # far left = ~24h ago, no data
+    page.wait_for_selector('#app[data-mode="replay"]', timeout=5000)
+    page.wait_for_timeout(300)
+    assert errors == []
