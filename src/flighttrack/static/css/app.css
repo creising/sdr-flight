@@ -11,6 +11,33 @@
 .ring-label { font-size: 11px; letter-spacing: .06em; color: var(--ring-label);
   background: var(--bg); padding: 0 3px; white-space: nowrap; }
 
+/* Sidebar */
+#sidebar { padding: 0 24px; }
+.sb-header { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 0 16px; }
+.wordmark { font-weight: 600; font-size: 22px; letter-spacing: .2em; }
+.statslink { font-size: 15px; color: var(--muted); }
+.statslink:hover { color: var(--text); }
+.mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.mode-seg { height: 36px; border: 0; border-radius: 7px; background: transparent; cursor: pointer;
+  color: var(--muted); font-family: Barlow, sans-serif; font-size: 14px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center; gap: 7px; }
+.mode-seg.active { background: var(--raised-2); color: var(--text); font-weight: 600; }
+.mode-seg[data-mode="replay"].active { background: oklch(0.76 0.13 295 / 0.18); color: var(--replay-text); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live);
+  box-shadow: 0 0 0 4px oklch(0.80 0.15 155 / .18); }
+.mode-seg:not(.active) .live-dot { background: var(--muted); box-shadow: none; }
+.status { font-size: 14px; color: var(--muted); padding: 10px 0; }
+
+.col-head { display: grid; grid-template-columns: minmax(0,1fr) 56px 76px 40px; gap: 10px;
+  font-size: 12px; letter-spacing: .08em; color: var(--dim); font-weight: 600; padding: 10px 2px 6px; }
+.col-head .num { text-align: right; }
+
+.legend { display: flex; gap: 14px; padding: 12px 0; margin-top: auto;
+  border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+.legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px;
+  vertical-align: -1px; }
+
 @media (max-width: 900px) {
   #app { grid-template-columns: 1fr; }
   #sidebar { position: fixed; inset: auto 0 0 0; height: 44vh; z-index: 500;

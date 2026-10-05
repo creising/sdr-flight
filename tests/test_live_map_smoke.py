@@ -32,3 +32,12 @@ def test_live_map_renders_markers(server, page):
     page.wait_for_selector(".leaflet-container", timeout=8000)
     page.wait_for_selector(".ac-marker", timeout=8000)       # a chevron aircraft marker
     assert page.locator(".ring-label").count() >= 1           # range-ring labels
+
+
+def test_sidebar_shell(server, page):
+    url, _ = server
+    page.goto(url)
+    page.wait_for_selector("#sidebar .wordmark", timeout=8000)
+    assert page.locator("#sidebar .wordmark").inner_text().strip() == "OVERHEAD"
+    assert page.locator(".mode-seg").count() == 2             # Live / Replay segments
+    assert page.locator("#status").count() == 1

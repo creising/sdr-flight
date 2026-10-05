@@ -3,9 +3,11 @@ import { getConfig } from "/static/js/api.js";
 import { state, set } from "/static/js/state.js";
 import { initMap, renderAircraft, onSelect } from "/static/js/map.js";
 import { connectLive } from "/static/js/socket.js";
+import { renderSidebar } from "/static/js/contacts.js";
 
 (async function () {
   initTheme();
+  renderSidebar(document.getElementById("sidebar"));
   const cfg = await getConfig();
   set({ receiver: cfg.receiver });
   initMap(cfg.receiver);
