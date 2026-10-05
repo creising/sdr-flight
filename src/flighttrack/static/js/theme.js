@@ -9,6 +9,16 @@ export function setTheme(pref) {
   document.documentElement.setAttribute("data-theme", resolve(pref));
   document.documentElement.setAttribute("data-theme-pref", pref);
 }
+export function getPref() {
+  try { return localStorage.getItem(KEY) || "auto"; } catch (e) { return "auto"; }
+}
+const ORDER = { auto: "dark", dark: "light", light: "auto" };
+export function cycleTheme() {
+  const next = ORDER[getPref()] || "dark";
+  setTheme(next);
+  return next;
+}
+
 export function initTheme() {
   let pref = "auto";
   try { pref = localStorage.getItem(KEY) || "auto"; } catch (e) {}

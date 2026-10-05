@@ -1,8 +1,9 @@
 import { getSummary, getPerHour, getAirlines } from "/static/js/api.js";
 import { escapeHtml } from "/static/js/util.js";
-import { initTheme } from "/static/js/theme.js";
+import { initTheme, cycleTheme } from "/static/js/theme.js";
 
 initTheme();
+document.querySelector(".theme-toggle")?.addEventListener("click", () => cycleTheme());
 
 function headlineTile(label, value, sub) {
   return `<div class="headline-tile">

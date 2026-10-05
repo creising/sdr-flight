@@ -39,7 +39,7 @@ def test_scrub_enters_replay_and_back(server_url, page):
     time.sleep(1.0)  # accumulate some history
     page.locator("#timeline .tl-hist").click(position={"x": 60, "y": 20})
     page.wait_for_selector('#app[data-mode="replay"]', timeout=5000)
-    assert page.locator(".back-to-live").count() == 1
+    page.wait_for_selector(".back-to-live", timeout=5000)
     assert page.locator(".tl-clock").count() == 1
     # window chip keeps us in replay
     page.locator('.win-chip[data-win="21600"]').click()

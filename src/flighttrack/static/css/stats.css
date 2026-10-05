@@ -3,6 +3,10 @@
 .back { font-size: 15px; color: var(--muted); }
 .back:hover { color: var(--text); }
 .st-header h1 { font-size: 48px; font-weight: 600; margin: 0; }
+.st-header .theme-toggle { margin-left: auto; align-self: center; background: transparent;
+  border: 1px solid var(--line); color: var(--muted); width: 30px; height: 30px; border-radius: 7px;
+  cursor: pointer; font-size: 15px; }
+.st-header .theme-toggle:hover { color: var(--text); }
 
 .headline { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .headline-tile { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px 28px; }

@@ -45,8 +45,8 @@ async function enterReplay(t, span) {
   winEnd = Date.now() / 1000;
   winStart = winEnd - span;
   set({ window: span, playheadTime: Math.min(Math.max(t, winStart), winEnd) });
+  renderReplayPanel();     // show controls immediately (before the async history load)
   await loadWindow();
-  renderReplayPanel();
   frame();
 }
 

@@ -3,9 +3,13 @@ import { escapeHtml, altClass, isOverhead, lookupSubject, compass16 } from "/sta
 
 export function renderSidebar(container, onMode) {
   container.innerHTML = `
+    <button class="sheet-handle" aria-label="expand"></button>
     <header class="sb-header">
       <span class="wordmark cond">OVERHEAD</span>
-      <a href="/stats" class="statslink">Stats →</a>
+      <span class="sb-head-right">
+        <button class="theme-toggle" title="Theme" aria-label="Toggle theme">◐</button>
+        <a href="/stats" class="statslink">Stats →</a>
+      </span>
     </header>
     <div class="mode-switch" role="tablist">
       <button class="mode-seg active" data-mode="live"><span class="live-dot"></span>Live</button>
