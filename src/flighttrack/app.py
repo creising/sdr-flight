@@ -14,7 +14,8 @@ from flighttrack.tracker import Tracker
 import httpx
 from flighttrack.store import Store
 from flighttrack.recorder import Recorder
-from flighttrack.enrichment import fetch_flight
+from flighttrack.enrichment import fetch_flight, fetch_photo
+from flighttrack.faa import FaaLookup
 
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -86,6 +87,11 @@ def create_app(settings: Settings) -> FastAPI:
             if aero_key else None)
         if not aero_key:
             log.warning("FLIGHTAWARE_API_KEY not set — flight route lookups disabled")
+        app.state.faa = FaaLookup(settings.faa_db_path)
+        # planespotters requires a descriptive UA that includes a contact URL/email;
+        # set PLANESPOTTERS_UA to enable photos (else coverage calls may be rejected).
+        photo_ua = os.environ.get("PLANESPOTTERS_UA", "").strip() or "flighttrack/1.0 (personal ADS-B tracker)"
+        app.state.http_client = httpx.AsyncClient(timeout=6.0, headers={"User-Agent": photo_ua})
         tasks = [asyncio.create_task(_ingest_loop(app)),
                  asyncio.create_task(_prune_loop(app))]
         try:
@@ -103,6 +109,8 @@ def create_app(settings: Settings) -> FastAPI:
                 await close()
             if app.state.aero_client is not None:
                 await app.state.aero_client.aclose()
+            await app.state.http_client.aclose()
+            app.state.faa.close()
             app.state.store.close()
 
     app = FastAPI(lifespan=lifespan)
@@ -137,15 +145,11 @@ def create_app(settings: Settings) -> FastAPI:
     async def history(from_: float = Query(..., alias="from"), to: float = Query(...)):
         return await asyncio.to_thread(app.state.store.history, from_, to)
 
-    @app.get("/api/flight/{callsign}")
-    async def flight(callsign: str, hex: str = Query("")):
+    async def _route(callsign: str, now: float) -> dict:
         store = app.state.store
-        key = callsign
-        now = time.time()
-        cached = await asyncio.to_thread(store.get_cached_flight, key, now)
+        cached = await asyncio.to_thread(store.get_cached_flight, callsign, now)
         if cached is not None:
             data, age = cached
-            # a known route is stable for the flight's duration; re-check unknowns sooner
             ttl = 6 * 3600 if data.get("route_known") else 900
             if age <= ttl:
                 return data
@@ -154,8 +158,35 @@ def create_app(settings: Settings) -> FastAPI:
                     "airline": None, "origin": None, "destination": None,
                     "aircraft_type": None, "registration": None}
         data = await fetch_flight(callsign, app.state.aero_client)
-        if data.get("lookup_ok"):          # only cache definitive answers, never transient failures
-            await asyncio.to_thread(store.put_cached_flight, key, data, now)
+        if data.get("lookup_ok"):
+            await asyncio.to_thread(store.put_cached_flight, callsign, data, now)
+        return data
+
+    async def _photo(hex: str, now: float):
+        store = app.state.store
+        key = f"photo|{hex}"
+        cached = await asyncio.to_thread(store.get_cached_flight, key, now)
+        if cached is not None:
+            data, age = cached
+            ttl = 30 * 86400 if data.get("photo") else 3600   # recheck photoless hourly
+            if age <= ttl:
+                return data.get("photo")
+        photo = await fetch_photo(hex, app.state.http_client)
+        await asyncio.to_thread(store.put_cached_flight, key, {"photo": photo}, now)
+        return photo
+
+    @app.get("/api/flight/{callsign}")
+    async def flight(callsign: str, hex: str = Query("")):
+        now = time.time()
+        data = dict(await _route(callsign, now))
+        if hex:
+            faa = await asyncio.to_thread(app.state.faa.lookup, hex)   # local, instant
+            if faa:
+                data["make"] = faa.get("make")
+                data["model"] = faa.get("model")
+                data["year"] = faa.get("year")
+                data["registration"] = data.get("registration") or faa.get("n_number")
+            data["photo"] = await _photo(hex, now)
         return data
 
     @app.get("/")

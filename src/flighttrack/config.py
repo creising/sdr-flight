@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     dump1090: Dump1090Config = Dump1090Config()
     db: DbConfig = DbConfig()
     logging: LoggingConfig = LoggingConfig()
+    faa_db_path: str = "data/faa.db"   # offline FAA registry (built by scripts/import_faa.py)
     poll_interval_s: float = 1.0
     stale_timeout_s: float = 30.0
     host: str = "127.0.0.1"

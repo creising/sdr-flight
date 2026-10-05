@@ -1,6 +1,41 @@
 import httpx
 import pytest
-from flighttrack.enrichment import fetch_flight, AERO_BASE
+from flighttrack.enrichment import fetch_flight, fetch_photo, AERO_BASE
+
+PHOTO_OK = {"photos": [{
+    "thumbnail": {"src": "https://t/small.jpg"},
+    "thumbnail_large": {"src": "https://t/large.jpg"},
+    "link": "https://www.planespotters.net/photo/123",
+    "photographer": "Jane Doe",
+}]}
+
+
+def _photo_client(status=200, body=PHOTO_OK):
+    def h(req: httpx.Request) -> httpx.Response:
+        assert "planespotters.net" in req.url.host
+        return httpx.Response(status, json=body)
+    return httpx.AsyncClient(transport=httpx.MockTransport(h))
+
+
+async def test_fetch_photo_ok():
+    c = _photo_client()
+    p = await fetch_photo("a1b2c3", c)
+    assert p["thumbnail"] == "https://t/large.jpg" and p["credit"] == "Jane Doe"
+    assert p["link"].startswith("https://www.planespotters.net/")
+    await c.aclose()
+
+
+async def test_fetch_photo_none_when_empty():
+    c = _photo_client(body={"photos": []})
+    assert await fetch_photo("x", c) is None
+    await c.aclose()
+
+
+async def test_fetch_photo_error_graceful():
+    def boom(req): raise httpx.ConnectError("x")
+    c = httpx.AsyncClient(transport=httpx.MockTransport(boom))
+    assert await fetch_photo("x", c) is None
+    await c.aclose()
 
 FLIGHTS_OK = {"flights": [
     {  # scheduled-only future leg (no actual_off) — should NOT be picked

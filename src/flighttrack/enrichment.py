@@ -30,6 +30,27 @@ def _pick_active(flights: list[dict]) -> dict | None:
     return (departed or flights)[-1]
 
 
+PLANESPOTTERS = "https://api.planespotters.net/pub/photos/hex"
+
+
+async def fetch_photo(hex: str, client: httpx.AsyncClient) -> dict | None:
+    """Fetch a photo of the airframe from planespotters.net (free; attribution required).
+    Returns {thumbnail, link, credit} or None. `client` is a plain httpx client."""
+    try:
+        r = await client.get(f"{PLANESPOTTERS}/{hex}")
+        if r.status_code == 200:
+            photos = r.json().get("photos", [])
+            if photos:
+                p = photos[0]
+                thumb = (p.get("thumbnail_large") or p.get("thumbnail") or {}).get("src")
+                if thumb:
+                    return {"thumbnail": thumb, "link": p.get("link"),
+                            "credit": p.get("photographer")}
+    except Exception as e:
+        log.warning("planespotters lookup failed for %s: %s", hex, e)
+    return None
+
+
 async def fetch_flight(ident: str, client: httpx.AsyncClient) -> dict:
     """Look up the ACTUAL current flight for an ident via FlightAware AeroAPI.
     `client` must be configured with base_url=AERO_BASE and the `x-apikey` header.

@@ -99,22 +99,39 @@ function renderLookup(subject, selected = false) {
 
 function renderRoute(subject) {
   const d = state.flightDetail;
-  if (!d || d.icao !== subject.icao) return `<div class="lk-route loading cond">LOOKING UP ROUTE…</div>`;
-  const parts = [];
+  if (!d || d.icao !== subject.icao) return `<div class="lk-route loading cond">LOOKING UP…</div>`;
+  const bits = [];
+
+  // Route
   if (d.route_known && d.origin && d.destination) {
-    parts.push(`<span class="rt-leg"><b>${escapeHtml(d.origin.code || "?")}</b> → <b>${escapeHtml(d.destination.code || "?")}</b></span>`);
-    const sub = [];
-    if (d.origin.city) sub.push(escapeHtml(d.origin.city));
-    if (d.destination.city) sub.push(escapeHtml(d.destination.city));
-    const meta = [];
-    if (d.airline) meta.push(escapeHtml(d.airline));
-    if (d.aircraft_type) meta.push(escapeHtml(d.aircraft_type));
-    return `<div class="lk-route">${parts[0]}
-      <div class="rt-cities">${sub.join(" → ")}</div>
-      ${meta.length ? `<div class="rt-meta">${meta.join(" · ")}</div>` : ""}</div>`;
+    bits.push(`<div class="rt-leg"><b>${escapeHtml(d.origin.code || "?")}</b> → <b>${escapeHtml(d.destination.code || "?")}</b></div>`);
+    const cities = [];
+    if (d.origin.city) cities.push(escapeHtml(d.origin.city));
+    if (d.destination.city) cities.push(escapeHtml(d.destination.city));
+    if (cities.length) bits.push(`<div class="rt-cities">${cities.join(" → ")}</div>`);
+  } else {
+    bits.push(`<div class="rt-unknown cond">ROUTE UNKNOWN</div>`);
   }
+
+  // Airline / type / registration
   const meta = [];
+  if (d.airline) meta.push(escapeHtml(d.airline));
   if (d.aircraft_type) meta.push(escapeHtml(d.aircraft_type));
   if (d.registration) meta.push(escapeHtml(d.registration));
-  return `<div class="lk-route unknown cond">ROUTE UNKNOWN${meta.length ? ` · ${meta.join(" · ")}` : ""}</div>`;
+  if (meta.length) bits.push(`<div class="rt-meta">${meta.join(" · ")}</div>`);
+
+  // Aircraft make/model/year (FAA)
+  const ac = [[d.make, d.model].filter(Boolean).map(escapeHtml).join(" "), d.year ? escapeHtml(d.year) : ""]
+    .filter(Boolean).join(" · ");
+  if (ac) bits.push(`<div class="rt-ac">${ac}</div>`);
+
+  // Photo (planespotters — attribution required)
+  if (d.photo && d.photo.thumbnail) {
+    const credit = d.photo.credit ? `© ${escapeHtml(d.photo.credit)}` : "";
+    bits.push(`<a class="rt-photo" href="${escapeHtml(d.photo.link || "#")}" target="_blank" rel="noopener">` +
+      `<img src="${escapeHtml(d.photo.thumbnail)}" alt="aircraft photo" loading="lazy">` +
+      `<span class="rt-credit">${credit}${credit ? " · " : ""}planespotters.net</span></a>`);
+  }
+
+  return `<div class="lk-route">${bits.join("")}</div>`;
 }
