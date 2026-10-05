@@ -24,10 +24,12 @@ async def fetch_flight(callsign: str, hex: str | None, client: httpx.AsyncClient
     out = {
         "callsign": callsign, "airline": None, "origin": None, "destination": None,
         "aircraft_type": None, "registration": None, "route_known": False,
+        "lookup_ok": False,   # True only on a DEFINITIVE answer (found or real 404); gates caching
     }
     try:
         r = await client.get(f"{BASE}/callsign/{callsign}")
         if r.status_code == 200:
+            out["lookup_ok"] = True
             fr = r.json().get("response")
             fr = fr.get("flightroute") if isinstance(fr, dict) else None
             if fr:
@@ -35,7 +37,10 @@ async def fetch_flight(callsign: str, hex: str | None, client: httpx.AsyncClient
                 out["airline"] = (fr.get("airline") or {}).get("name")
                 out["origin"] = _airport(fr.get("origin"))
                 out["destination"] = _airport(fr.get("destination"))
-    except Exception as e:
+        elif r.status_code == 404:
+            out["lookup_ok"] = True   # definitively not in the route DB
+        # 429 / 5xx / other -> leave lookup_ok False (transient; retry next time)
+    except Exception as e:  # network error / timeout -> transient, do not cache
         log.warning("adsbdb route lookup failed for %s: %s", callsign, e)
 
     if hex:

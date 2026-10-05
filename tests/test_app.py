@@ -146,7 +146,8 @@ def test_flight_endpoint_caches(monkeypatch):
         return {"callsign": callsign, "airline": "American Airlines",
                 "origin": {"code": "PHL", "city": "Philadelphia", "name": "x"},
                 "destination": {"code": "TPA", "city": "Tampa", "name": "y"},
-                "aircraft_type": "A321", "registration": "N1", "route_known": True}
+                "aircraft_type": "A321", "registration": "N1",
+                "route_known": True, "lookup_ok": True}
 
     monkeypatch.setattr("flighttrack.app.fetch_flight", fake_fetch)
     s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
@@ -158,6 +159,24 @@ def test_flight_endpoint_caches(monkeypatch):
         r2 = c.get("/api/flight/AAL2322", params={"hex": "ad4c2a"})
         assert r2.json()["destination"]["code"] == "TPA"
     assert calls["n"] == 1   # second request served from cache, not re-fetched
+
+
+def test_flight_endpoint_does_not_cache_transient_failure(monkeypatch):
+    from flighttrack.config import Settings, Receiver, DbConfig
+    calls = {"n": 0}
+
+    async def flaky_fetch(callsign, hex, client):
+        calls["n"] += 1
+        return {"callsign": callsign, "route_known": False, "lookup_ok": False}  # transient error
+
+    monkeypatch.setattr("flighttrack.app.fetch_flight", flaky_fetch)
+    s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
+                 poll_interval_s=0.02, db=DbConfig(path=":memory:"))
+    app = create_app(s)
+    with TestClient(app) as c:
+        c.get("/api/flight/AAL1", params={"hex": "aa"})
+        c.get("/api/flight/AAL1", params={"hex": "aa"})
+    assert calls["n"] == 2   # transient failures are NOT cached -> retried every time
 
 
 def test_buckets_endpoint():

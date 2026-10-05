@@ -27,6 +27,7 @@ async def test_fetch_flight_route_and_aircraft():
     client = httpx.AsyncClient(transport=_transport())
     r = await fetch_flight("AAL2322", "ad4c2a", client)
     assert r["route_known"] is True
+    assert r["lookup_ok"] is True
     assert r["airline"] == "American Airlines"
     assert r["origin"]["code"] == "PHL" and r["origin"]["city"] == "Philadelphia"
     assert r["destination"]["code"] == "TPA"
@@ -34,20 +35,28 @@ async def test_fetch_flight_route_and_aircraft():
     await client.aclose()
 
 
-async def test_fetch_flight_unknown_route():
+async def test_fetch_flight_definitive_not_found_is_lookup_ok():
+    # a real 404 ("unknown callsign") is a definitive answer -> cacheable
     client = httpx.AsyncClient(transport=_transport(
         route_status=404, route_body={"response": "unknown callsign"},
         ac_status=404, ac_body={"response": "unknown aircraft"}))
     r = await fetch_flight("ZZZ999", "000000", client)
-    assert r["route_known"] is False
-    assert r["origin"] is None and r["destination"] is None
-    assert r["aircraft_type"] is None
+    assert r["route_known"] is False and r["lookup_ok"] is True
+    assert r["origin"] is None and r["aircraft_type"] is None
     await client.aclose()
 
 
-async def test_fetch_flight_swallows_network_error():
+async def test_fetch_flight_transient_error_not_cacheable():
     def boom(req): raise httpx.ConnectError("down")
     client = httpx.AsyncClient(transport=httpx.MockTransport(boom))
     r = await fetch_flight("AAL2322", "ad4c2a", client)
-    assert r["route_known"] is False and r["callsign"] == "AAL2322"
+    assert r["route_known"] is False and r["lookup_ok"] is False   # don't cache a transient failure
+    assert r["callsign"] == "AAL2322"
+    await client.aclose()
+
+
+async def test_fetch_flight_rate_limited_not_cacheable():
+    client = httpx.AsyncClient(transport=_transport(route_status=429, route_body={}))
+    r = await fetch_flight("AAL2322", "ad4c2a", client)
+    assert r["lookup_ok"] is False   # 429 is transient -> retry later, don't cache
     await client.aclose()

@@ -137,11 +137,12 @@ def create_app(settings: Settings) -> FastAPI:
         cached = await asyncio.to_thread(store.get_cached_flight, key, now)
         if cached is not None:
             data, age = cached
-            ttl = 7 * 86400 if data.get("route_known") else 3600   # refresh unknowns hourly
+            ttl = 7 * 86400 if data.get("route_known") else 1800   # not-found refreshes every 30 min
             if age <= ttl:
                 return data
         data = await fetch_flight(callsign, hex or None, app.state.enrich_client)
-        await asyncio.to_thread(store.put_cached_flight, key, data, now)
+        if data.get("lookup_ok"):          # only cache definitive answers, never transient failures
+            await asyncio.to_thread(store.put_cached_flight, key, data, now)
         return data
 
     @app.get("/")
