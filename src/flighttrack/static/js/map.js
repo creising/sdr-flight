@@ -1,4 +1,4 @@
-import { altClass, isOverhead } from "/static/js/util.js";
+import { altClass, isOverhead, escapeHtml, flightLevel } from "/static/js/util.js";
 
 let map, layer, acLayer, trailLayer;
 const markers = new Map();   // icao -> L.marker
@@ -41,18 +41,27 @@ export function initMap(receiver) {
   return map;
 }
 
-function icon(a) {
+function icon(a, opts = {}) {
   const cls = altClass(a.alt_ft);
   const color = altColorVar(cls);
+  const selected = opts.selected && a.icao === opts.selected;
   const ring = isOverhead(a.elevation_deg)
     ? `<circle cx="17" cy="17" r="16" fill="none" stroke="${color}" stroke-opacity="0.55" stroke-width="1.5"/>`
     : "";
+  const sel = selected
+    ? `<circle cx="17" cy="17" r="15" fill="none" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="3 3"/>`
+    : "";
+  const label = opts.labelsOn
+    ? `<div class="ac-label"><span class="al-call">${escapeHtml(a.callsign || a.icao)}</span>` +
+      `<span class="al-fl" style="color:${color}">FL${flightLevel(a.alt_ft)}</span></div>`
+    : "";
   return L.divIcon({
     className: "", iconSize: [34, 34], iconAnchor: [17, 17],
-    html: `<svg width="34" height="34" viewBox="0 0 34 34">${ring}` +
+    html: `<div class="ac-wrap${selected ? " selected" : ""}">` +
+      `<svg width="34" height="34" viewBox="0 0 34 34">${ring}${sel}` +
       `<g transform="translate(5,5) rotate(${a.track_deg ?? 0} 12 12)">` +
       `<polygon class="ac-marker" points="12,1 21,22 12,17 3,22" fill="${color}" ` +
-      `stroke="var(--bg)" stroke-width="1.5"/></g></svg>`,
+      `stroke="var(--bg)" stroke-width="1.5"/></g></svg>${label}</div>`,
   });
 }
 
@@ -70,7 +79,7 @@ function drawTrail(icao, cls) {
   trailMarkers.set(icao, ms);
 }
 
-export function renderAircraft(list) {
+export function renderAircraft(list, opts = {}) {
   const seen = new Set();
   for (const a of list) {
     if (a.lat == null || a.lon == null) continue;
@@ -78,13 +87,13 @@ export function renderAircraft(list) {
     const cls = altClass(a.alt_ft);
     let m = markers.get(a.icao);
     if (!m) {
-      m = L.marker([a.lat, a.lon], { icon: icon(a) }).addTo(acLayer);
+      m = L.marker([a.lat, a.lon], { icon: icon(a, opts) }).addTo(acLayer);
       m.on("click", () => selectCb && selectCb(a.icao));
       markers.set(a.icao, m);
     } else {
-      m.setLatLng([a.lat, a.lon]); m.setIcon(icon(a));
+      m.setLatLng([a.lat, a.lon]); m.setIcon(icon(a, opts));
     }
-    m.bindTooltip(a.callsign || a.icao);
+    m.bindTooltip(escapeHtml(a.callsign || a.icao));
     const tr = trails.get(a.icao) || []; tr.push([a.lat, a.lon]);
     while (tr.length > 6) tr.shift();
     trails.set(a.icao, tr);
@@ -123,13 +132,13 @@ function interp(points, t) {
   return lo;
 }
 
-export function renderReplay(tracks, t) {
+export function renderReplay(tracks, t, opts = {}) {
   const list = [];
   for (const tr of tracks) {
     const p = interp(tr.points, t);
     if (p) list.push({ icao: tr.icao, callsign: tr.callsign, lat: p.lat, lon: p.lon,
                        alt_ft: p.alt_ft, track_deg: p.track_deg });
   }
-  renderAircraft(list);
+  renderAircraft(list, opts);
   return list.length;
 }

@@ -3,7 +3,7 @@ import { state, set } from "/static/js/state.js";
 import { renderReplay, clearAircraft } from "/static/js/map.js";
 
 const DAY = 24 * 3600;
-let el = null, liveTimer = null, raf = null, lastFrame = 0;
+let el = null, liveTimer = null, raf = null, playTimer = null, lastFrame = 0;
 let winStart = 0, winEnd = 0;         // replay window
 let onLiveResume = null;
 
@@ -51,7 +51,7 @@ async function enterReplay(t, span) {
 }
 
 function backToLive() {
-  if (raf) cancelAnimationFrame(raf);
+  stopLoop();
   set({ mode: "live", playing: false, playheadTime: null, tracks: [] });
   document.getElementById("app").setAttribute("data-mode", "live");
   syncModeButtons("live");
@@ -82,7 +82,9 @@ function renderReplayPanel() {
       <div class="tl-hist"><div class="bars"></div><div class="playhead rp"></div></div>
     </div>
     <button class="back-to-live cond">● BACK TO LIVE →</button>`;
-  el.querySelector(".playpause").addEventListener("click", togglePlay);
+  const pp = el.querySelector(".playpause");
+  pp.textContent = state.playing ? "❚❚" : "▶";    // keep button in sync after a panel rebuild (#4)
+  pp.addEventListener("click", togglePlay);
   el.querySelector(".speed").addEventListener("click", cycleSpeed);
   el.querySelector(".back-to-live").addEventListener("click", backToLive);
   el.querySelectorAll(".win-chip").forEach((c) => {
@@ -104,15 +106,38 @@ async function changeWindow(span) {
   frame();
 }
 
+function stopLoop() {
+  if (raf) { cancelAnimationFrame(raf); raf = null; }
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+}
+
+function advance(dt) {
+  set({ playheadTime: Math.min(winEnd, state.playheadTime + dt * state.speed) });
+  frame();
+  if (state.playheadTime >= winEnd) {
+    set({ playing: false });
+    stopLoop();
+    const pp = el.querySelector(".playpause"); if (pp) pp.textContent = "▶";
+  }
+}
+
+function startLoop() {
+  stopLoop();
+  if (reducedMotion()) {
+    playTimer = setInterval(() => { if (state.playing) advance(0.25); }, 250);  // timer fallback (#3)
+  } else {
+    lastFrame = performance.now();
+    raf = requestAnimationFrame(tick);
+  }
+}
+
 function togglePlay() {
   set({ playing: !state.playing });
   el.querySelector(".playpause").textContent = state.playing ? "❚❚" : "▶";
   if (state.playing) {
     if (state.playheadTime >= winEnd) set({ playheadTime: winStart });
-    lastFrame = performance.now();
-    if (!reducedMotion()) raf = requestAnimationFrame(tick);
-    else frame();
-  } else if (raf) cancelAnimationFrame(raf);
+    startLoop();
+  } else stopLoop();
 }
 
 function cycleSpeed() {
@@ -124,17 +149,14 @@ function cycleSpeed() {
 function tick(now) {
   if (!state.playing) return;
   const dt = (now - lastFrame) / 1000; lastFrame = now;
-  set({ playheadTime: Math.min(winEnd, state.playheadTime + dt * state.speed) });
-  frame();
-  if (state.playheadTime >= winEnd) { set({ playing: false });
-    el.querySelector(".playpause").textContent = "▶"; return; }
-  raf = requestAnimationFrame(tick);
+  advance(dt);
+  if (state.playing) raf = requestAnimationFrame(tick);
 }
 
 function frame() {
   if (state.mode !== "replay") return;
   const t = state.playheadTime;
-  const shown = renderReplay(state.tracks, t);
+  const shown = renderReplay(state.tracks, t, { selected: state.selectedCallsign, labelsOn: state.labelsOn });
   const clock = el.querySelector(".tl-clock");
   if (clock) clock.textContent = new Date(t * 1000).toLocaleTimeString();
   const ph = el.querySelector(".playhead");
