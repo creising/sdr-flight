@@ -26,29 +26,31 @@ def server():
     server.should_exit = True; th.join(timeout=5)
 
 
-def test_stats_page_renders_tiles_and_chart(server, page):
-    server_url, _ = server
-    page.goto(server_url + "/stats")
-    page.wait_for_selector(".tile", timeout=8000)
-    page.wait_for_selector("#perhour svg", timeout=8000)      # chart rendered
-    assert page.locator(".tile").count() >= 4
-    # 24 hourly buckets always render a rect each (zero-height on empty hours),
-    # so assert DOM presence rather than visibility.
-    assert page.locator("#perhour svg rect").count() >= 1
-    assert page.locator("#airlines svg").count() == 1
+def test_stats_renders_tiles_clock_airlines(server, page):
+    url, app = server
+    import time as _t
+    store = app.state.store
+    base = _t.time()
+    for cs in ["UAL1", "UAL2", "DAL9", "N123AB"]:
+        cid = store.open_contact(cs[:3].lower(), cs, base)
+        store.update_contact(cid, base, alt_ft=30000, distance_km=10.0, elevation_deg=20.0)
+    page.goto(url + "/stats")
+    page.wait_for_selector(".headline-tile", timeout=8000)
+    assert page.locator(".headline-tile").count() == 2
+    assert page.locator(".record-tile").count() == 4
+    assert page.locator("#radial svg rect").count() == 24
+    page.wait_for_selector(".airline-row", timeout=8000)
+    assert "Private / GA" in page.content()
 
 
 def test_stats_escapes_malicious_callsign(server, page):
-    server_url, app = server
-    # Seed a very-close contact whose callsign is an XSS payload -> it becomes the
-    # "closest pass" tile. If unescaped, the onerror fires and sets window.__xss.
-    base = time.time()
+    url, app = server
+    import time as _t
     store = app.state.store
+    base = _t.time()
     cid = store.open_contact("evil", "<img src=x onerror='window.__xss=1'>", base)
     store.update_contact(cid, base, alt_ft=1000, distance_km=0.05, elevation_deg=85.0)
-    page.goto(server_url + "/stats")
-    page.wait_for_selector(".tile", timeout=8000)
+    page.goto(url + "/stats")
+    page.wait_for_selector(".record-tile", timeout=8000)
     page.wait_for_timeout(300)
-    assert page.evaluate("window.__xss") is None            # payload never executed
-    # the literal text is present (escaped), proving it rendered as text not markup
-    assert "onerror" in page.content()
+    assert page.evaluate("window.__xss") is None

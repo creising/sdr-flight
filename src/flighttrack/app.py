@@ -116,6 +116,11 @@ def create_app(settings: Settings) -> FastAPI:
     async def stats_airlines():
         return await asyncio.to_thread(app.state.store.top_airlines, 8)
 
+    @app.get("/api/stats/buckets")
+    async def stats_buckets(from_: float = Query(..., alias="from"),
+                            to: float = Query(...), n: int = Query(96)):
+        return await asyncio.to_thread(app.state.store.contacts_buckets, from_, to, n)
+
     @app.get("/api/history")
     async def history(from_: float = Query(..., alias="from"), to: float = Query(...)):
         return await asyncio.to_thread(app.state.store.history, from_, to)

@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+/* Dark (primary) — values from docs/design/glass-cockpit/handoff.md */
+:root,
+:root[data-theme="dark"] {
+  --bg: #0a0d12;
+  --sidebar: #0d1117;
+  --surface: #121821;
+  --raised: #18202b;
+  --raised-2: #1c2530;
+  --row-hi: #141b24;
+  --line: #222b37;
+  --line-2: #2a3542;
+  --bar-idle: #2c3946;
+  --bar-future: #28313d;
+  --text: #e8edf2;
+  --text-2: #b9c2cc;
+  --muted: #8d9bab;
+  --dim: #5f6c7b;
+  --alt-low: oklch(0.74 0.15 30);
+  --alt-mid: oklch(0.82 0.14 80);
+  --alt-high: oklch(0.80 0.11 215);
+  --live: oklch(0.80 0.15 155);
+  --replay: oklch(0.76 0.13 295);
+  --replay-text: oklch(0.85 0.09 295);
+  --ring: rgba(150, 170, 200, 0.16);
+  --ring-label: #6f7f92;
+}
+
+/* Light (secondary) */
+:root[data-theme="light"] {
+  --bg: #eef1f4;
+  --sidebar: #ffffff;
+  --surface: #ffffff;
+  --raised: #f5f7f9;
+  --raised-2: #eef1f4;
+  --row-hi: #f5f7f9;
+  --line: #dfe4ea;
+  --line-2: #d3d9e0;
+  --bar-idle: #c7d0da;
+  --bar-future: #dfe4ea;
+  --text: #11161d;
+  --text-2: #2a333d;
+  --muted: #55626f;
+  --dim: #8a95a1;
+  --alt-low: oklch(0.58 0.17 30);
+  --alt-mid: oklch(0.62 0.14 65);
+  --alt-high: oklch(0.55 0.12 235);
+  --live: oklch(0.60 0.15 155);
+  --replay: oklch(0.58 0.13 295);
+  --replay-text: oklch(0.45 0.12 295);
+  --ring: rgba(40, 60, 90, 0.2);
+  --ring-label: #55626f;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Barlow, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: "JetBrains Mono", monospace; }
+.cond { font-family: "Barlow Condensed", sans-serif; }
+.num { font-variant-numeric: tabular-nums; }
+a { color: var(--alt-high); text-decoration: none; }
+a:hover { color: var(--text); }

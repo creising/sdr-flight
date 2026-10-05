@@ -67,6 +67,33 @@ def test_top_airlines_counts_callsign_prefix(store):
     assert air["UAL"] == 2 and air["DAL"] == 1
 
 
+def test_contacts_buckets_counts_by_first_seen(store):
+    for ts in (100.0, 100.0, 160.0, 250.0):
+        store.open_contact("a", "UAL1", ts)
+    b = store.contacts_buckets(100.0, 300.0, n=2)   # buckets [100,200),[200,300)
+    assert [x["count"] for x in b] == [3, 1]
+    assert b[0]["start"] == 100.0 and b[1]["start"] == 200.0
+
+
+def test_contacts_buckets_degenerate(store):
+    assert store.contacts_buckets(100.0, 100.0, 4) == []
+    assert store.contacts_buckets(100.0, 200.0, 0) == []
+    assert store.contacts_buckets(200.0, 100.0, 4) == []
+
+
+def test_top_airlines_share_and_ga_grouping(store):
+    for cs in ["UAL1", "UAL2", "DAL9", "N123AB", "G-ABCD"]:
+        store.open_contact(cs[:3].lower(), cs, 100.0)
+    rows = store.top_airlines()
+    assert rows[-1]["airline"] == "Private / GA" and rows[-1]["count"] == 2
+    ual = next(r for r in rows if r["airline"] == "UAL")
+    assert ual["count"] == 2 and abs(ual["share"] - 2 / 5) < 1e-9
+
+
+def test_top_airlines_empty(store):
+    assert store.top_airlines() == []
+
+
 def test_prune_drops_old_positions_keeps_contacts(store):
     cid = store.open_contact("abc", "UAL1", ts=100.0)
     store.add_position(cid, 100.0, 40.1, -105.1, 35000, 450, 270, -12.0)
