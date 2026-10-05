@@ -58,6 +58,13 @@
 .lk-grid > div { background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
 .lk-grid .v { font-size: 22px; font-weight: 500; }
 .lk-grid .v i { font-size: 13px; color: var(--muted); font-style: normal; margin-left: 3px; }
+.lk-route { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.rt-leg { font-size: 22px; font-weight: 600; letter-spacing: .04em; }
+.rt-leg b { color: var(--text); }
+.rt-cities { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.rt-meta { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+.lk-route.loading, .lk-route.unknown { font-size: 11px; letter-spacing: .12em; font-weight: 600;
+  color: var(--dim); border-top: 1px solid var(--line); }
 
 .col-head { display: grid; grid-template-columns: minmax(0,1fr) 56px 76px 40px; gap: 10px;
   font-size: 12px; letter-spacing: .08em; color: var(--dim); font-weight: 600; padding: 10px 2px 6px; }

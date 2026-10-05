@@ -137,6 +137,29 @@ def test_history_endpoint_shape():
         assert body and body[0]["points"][0]["lat"] == 40.1
 
 
+def test_flight_endpoint_caches(monkeypatch):
+    from flighttrack.config import Settings, Receiver, DbConfig
+    calls = {"n": 0}
+
+    async def fake_fetch(callsign, hex, client):
+        calls["n"] += 1
+        return {"callsign": callsign, "airline": "American Airlines",
+                "origin": {"code": "PHL", "city": "Philadelphia", "name": "x"},
+                "destination": {"code": "TPA", "city": "Tampa", "name": "y"},
+                "aircraft_type": "A321", "registration": "N1", "route_known": True}
+
+    monkeypatch.setattr("flighttrack.app.fetch_flight", fake_fetch)
+    s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
+                 poll_interval_s=0.02, db=DbConfig(path=":memory:"))
+    app = create_app(s)
+    with TestClient(app) as c:
+        r1 = c.get("/api/flight/AAL2322", params={"hex": "ad4c2a"})
+        assert r1.status_code == 200 and r1.json()["origin"]["code"] == "PHL"
+        r2 = c.get("/api/flight/AAL2322", params={"hex": "ad4c2a"})
+        assert r2.json()["destination"]["code"] == "TPA"
+    assert calls["n"] == 1   # second request served from cache, not re-fetched
+
+
 def test_buckets_endpoint():
     from flighttrack.config import Settings, Receiver, DbConfig
     s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),

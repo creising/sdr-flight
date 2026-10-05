@@ -1,4 +1,4 @@
-import { set } from "/static/js/state.js";
+import { set, state } from "/static/js/state.js";
 import { escapeHtml, altClass, isOverhead, lookupSubject, compass16 } from "/static/js/util.js";
 
 export function renderSidebar(container, onMode) {
@@ -33,7 +33,9 @@ export function renderSidebar(container, onMode) {
 }
 
 export function renderContacts(contacts) {
-  renderLookup(lookupSubject(contacts));
+  const sel = state.selectedCallsign
+    ? contacts.find((c) => c.icao === state.selectedCallsign) : null;
+  renderLookup(sel || lookupSubject(contacts), !!sel);
   const ul = document.getElementById("contacts");
   if (!ul) return;
   const rows = contacts.filter((c) => c.lat != null)
@@ -58,10 +60,13 @@ export function renderContacts(contacts) {
     </li>`;
   }).join("");
   ul.querySelectorAll(".contact-row").forEach((li) =>
-    li.addEventListener("click", () => set({ selectedCallsign: li.dataset.icao })));
+    li.addEventListener("click", () => {
+      const icao = li.dataset.icao;
+      set({ selectedCallsign: state.selectedCallsign === icao ? null : icao });
+    }));
 }
 
-function renderLookup(subject) {
+function renderLookup(subject, selected = false) {
   const el = document.getElementById("lookup");
   if (!el) return;
   if (!subject) { el.innerHTML = `<div class="lookup-empty cond">NO CONTACTS</div>`; return; }
@@ -70,8 +75,9 @@ function renderLookup(subject) {
   const dir = subject.bearing_deg == null ? "" : compass16(subject.bearing_deg) + " · ";
   const km = subject.distance_km == null ? "—" : subject.distance_km.toFixed(1);
   const ft = subject.alt_ft == null ? "—" : Math.round(subject.alt_ft).toLocaleString();
+  const label = selected ? "SELECTED" : "LOOK UP";
   el.innerHTML = `
-    <div class="lk-top"><span class="cond lbl">LOOK UP</span>
+    <div class="lk-top"><span class="cond lbl">${label}</span>
       <span class="cond lk-dir">${dir}${elev}° UP</span></div>
     <div class="lk-body">
       <div class="lk-call cond">${escapeHtml(subject.callsign || subject.icao)}</div>
@@ -87,5 +93,28 @@ function renderLookup(subject) {
       <div><span class="cond lbl">DIST</span><span class="num v">${km}<i>km</i></span></div>
       <div><span class="cond lbl">ALT</span><span class="num v" style="color:var(--alt-${cls})">${ft}<i>ft</i></span></div>
       <div><span class="cond lbl">ELEV</span><span class="num v">${elev}<i>°</i></span></div>
-    </div>`;
+    </div>
+    ${selected ? renderRoute(subject) : ""}`;
+}
+
+function renderRoute(subject) {
+  const d = state.flightDetail;
+  if (!d || d.icao !== subject.icao) return `<div class="lk-route loading cond">LOOKING UP ROUTE…</div>`;
+  const parts = [];
+  if (d.route_known && d.origin && d.destination) {
+    parts.push(`<span class="rt-leg"><b>${escapeHtml(d.origin.code || "?")}</b> → <b>${escapeHtml(d.destination.code || "?")}</b></span>`);
+    const sub = [];
+    if (d.origin.city) sub.push(escapeHtml(d.origin.city));
+    if (d.destination.city) sub.push(escapeHtml(d.destination.city));
+    const meta = [];
+    if (d.airline) meta.push(escapeHtml(d.airline));
+    if (d.aircraft_type) meta.push(escapeHtml(d.aircraft_type));
+    return `<div class="lk-route">${parts[0]}
+      <div class="rt-cities">${sub.join(" → ")}</div>
+      ${meta.length ? `<div class="rt-meta">${meta.join(" · ")}</div>` : ""}</div>`;
+  }
+  const meta = [];
+  if (d.aircraft_type) meta.push(escapeHtml(d.aircraft_type));
+  if (d.registration) meta.push(escapeHtml(d.registration));
+  return `<div class="lk-route unknown cond">ROUTE UNKNOWN${meta.length ? ` · ${meta.join(" · ")}` : ""}</div>`;
 }
