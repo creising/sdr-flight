@@ -13,6 +13,8 @@ class RawAircraft:
     track_deg: float | None
     seen_s: float
     rssi: float | None
+    baro_rate: float | None = None   # vertical rate, ft/min (+ climb / - descent)
+    squawk: str | None = None        # transponder code
 
 
 @dataclass
@@ -26,6 +28,8 @@ class AircraftView:
     track_deg: float | None
     seen_s: float
     rssi: float | None
+    baro_rate: float | None = None
+    squawk: str | None = None
     distance_km: float | None = None
     bearing_deg: float | None = None
     elevation_deg: float | None = None

@@ -106,6 +106,12 @@ function cardShell(subject, selected) {
       <div><span class="cond lbl">ALT</span><span class="num v v-alt"></span></div>
       <div><span class="cond lbl">ELEV</span><span class="num v v-elev"></span></div>
     </div>
+    <div class="lk-grid lk-grid2">
+      <div><span class="cond lbl">SPD</span><span class="num v2 v-spd"></span></div>
+      <div><span class="cond lbl">V·S</span><span class="num v2 v-vs"></span></div>
+      <div><span class="cond lbl">SQUAWK</span><span class="num v2 v-sq"></span></div>
+      <div><span class="cond lbl">SIGNAL</span><span class="v2 v-sig"></span></div>
+    </div>
     ${selected ? renderRoute(subject) : ""}`;
 }
 
@@ -128,6 +134,35 @@ function updateTelemetry(el, s) {
   if (vd) vd.innerHTML = `${km}<i>km</i>`;
   if (va) { va.innerHTML = `${ft}<i>ft</i>`; va.style.color = color; }
   if (ve) ve.innerHTML = `${elev}<i>°</i>`;
+
+  // second row: speed / vertical rate / squawk / signal
+  const spd = q(".v-spd");
+  if (spd) spd.innerHTML = s.ground_speed_kt == null ? "—" : `${Math.round(s.ground_speed_kt)}<i>kt</i>`;
+  const vs = q(".v-vs");
+  if (vs) {
+    const vr = s.baro_rate;
+    if (vr == null) { vs.innerHTML = "—"; vs.className = "num v2 v-vs"; }
+    else {
+      const arrow = vr > 50 ? "↑" : vr < -50 ? "↓" : "→";
+      vs.innerHTML = `${arrow} ${Math.abs(Math.round(vr)).toLocaleString()}<i>fpm</i>`;
+      vs.className = "num v2 v-vs " + (vr > 50 ? "climb" : vr < -50 ? "descend" : "");
+    }
+  }
+  const sq = q(".v-sq");
+  if (sq) {
+    const code = s.squawk || "—";
+    const emg = { "7500": "HIJACK", "7600": "RADIO FAIL", "7700": "EMERGENCY" }[s.squawk];
+    sq.textContent = emg ? `${code} ⚠` : code;
+    sq.className = "num v2 v-sq" + (emg ? " sq-emergency" : "");
+    sq.title = emg || "";
+  }
+  const sig = q(".v-sig");
+  if (sig) {
+    const r = s.rssi;
+    const pct = r == null ? 0 : Math.max(4, Math.min(100, ((r + 35) / 32) * 100));
+    sig.innerHTML = `<span class="sigbar"><i style="width:${pct.toFixed(0)}%"></i></span>` +
+      `<span class="signum num">${r == null ? "—" : r.toFixed(0) + " dBFS"}</span>`;
+  }
 }
 
 function renderRoute(subject) {

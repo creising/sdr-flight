@@ -24,6 +24,18 @@ def test_parse_maps_and_cleans_fields():
     assert minimal.callsign is None and minimal.ground_speed_kt is None
 
 
+def test_parse_captures_vertical_rate_and_squawk():
+    doc = {"aircraft": [{"hex": "aa", "baro_rate": -1984, "squawk": "1377",
+                         "alt_baro": 26600, "seen": 1}]}
+    p = dump1090.parse_aircraft_json(doc)[0]
+    assert p.baro_rate == -1984 and p.squawk == "1377"
+
+
+def test_parse_vertical_rate_falls_back_to_geom_rate():
+    doc = {"aircraft": [{"hex": "aa", "geom_rate": 1500, "seen": 1}]}
+    assert dump1090.parse_aircraft_json(doc)[0].baro_rate == 1500
+
+
 def test_parse_skips_records_without_hex():
     planes = dump1090.parse_aircraft_json({"aircraft": [{"flight": "X"}, {"hex": "aa"}]})
     assert [p.icao for p in planes] == ["aa"]

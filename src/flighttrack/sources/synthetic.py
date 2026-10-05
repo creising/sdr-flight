@@ -28,6 +28,8 @@ class SyntheticSource:
                 "phase": rng.uniform(0, 2 * math.pi),
                 "alt_ft": rng.choice([8000, 12000, 20000, 33000, 38000]),
                 "gs": rng.uniform(250, 500),
+                "baro_rate": rng.choice([0, 0, 1472, -1984, 2112, -1216]),
+                "squawk": f"{rng.randint(1000, 7777):04d}",
                 "positionless": i == 0,  # first plane never reports a position
             })
 
@@ -48,5 +50,6 @@ class SyntheticSource:
                 icao=p["icao"], callsign=p["callsign"],
                 lat=self.rx.lat + dlat, lon=self.rx.lon + dlon,
                 alt_ft=float(p["alt_ft"]), ground_speed_kt=float(p["gs"]),
-                track_deg=track, seen_s=0.0, rssi=-15.0))
+                track_deg=track, seen_s=0.0, rssi=-15.0,
+                baro_rate=p["baro_rate"], squawk=p["squawk"]))
         return out

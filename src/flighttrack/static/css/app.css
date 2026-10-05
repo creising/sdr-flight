@@ -58,6 +58,16 @@
 .lk-grid > div { background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
 .lk-grid .v { font-size: 22px; font-weight: 500; }
 .lk-grid .v i { font-size: 13px; color: var(--muted); font-style: normal; margin-left: 3px; }
+.lk-grid2 { grid-template-columns: repeat(4, 1fr); margin-top: 8px; }
+.lk-grid2 .v2 { font-size: 15px; font-weight: 500; white-space: nowrap; }
+.lk-grid2 .v2 i { font-size: 10px; color: var(--muted); font-style: normal; margin-left: 2px; }
+.v-vs.climb { color: var(--alt-high); }
+.v-vs.descend { color: var(--alt-mid); }
+.sq-emergency { color: var(--alt-low); font-weight: 700; }
+.sigbar { display: inline-block; width: 40px; height: 6px; background: var(--raised); border-radius: 3px;
+  overflow: hidden; vertical-align: middle; }
+.sigbar i { display: block; height: 100%; background: var(--alt-high); border-radius: 3px; }
+.signum { display: block; font-size: 10px; color: var(--muted); margin-top: 3px; }
 .lk-route { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .rt-leg { font-size: 22px; font-weight: 600; letter-spacing: .04em; }
 .rt-leg b { color: var(--text); }
