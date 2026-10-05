@@ -71,9 +71,26 @@
 .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px;
   vertical-align: -1px; }
 
+/* Timeline strip (bottom overlay on the map) */
+#timeline { position: fixed; bottom: 24px; left: calc(372px + 24px); right: 24px; height: 68px;
+  z-index: 600; display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center;
+  padding: 0 18px; background: rgba(13, 17, 23, .88); border: 1px solid var(--line);
+  border-radius: 14px; backdrop-filter: blur(6px); }
+:root[data-theme="light"] #timeline { background: rgba(255, 255, 255, .92); box-shadow: 0 2px 10px rgba(20,30,50,.12); }
+.tl-title { font-size: 12px; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+.tl-hint { font-size: 12px; color: var(--dim); }
+.tl-hist { position: relative; height: 44px; }
+.tl-hist .bars { display: flex; align-items: flex-end; gap: 2px; height: 100%; }
+.tl-hist .bar { flex: 1 1 0; min-height: 1px; background: var(--bar-idle); border-radius: 1px; }
+.tl-hist .bar.live { background: var(--live); }
+.tl-hist .playhead { position: absolute; top: 0; right: 0; width: 2px; height: 100%; background: var(--live); }
+.now-pill { font-size: 14px; letter-spacing: .12em; font-weight: 600; color: var(--live);
+  background: oklch(0.80 0.15 155 / 0.14); padding: 6px 12px; border-radius: 99px; white-space: nowrap; }
+
 @media (max-width: 900px) {
   #app { grid-template-columns: 1fr; }
   #sidebar { position: fixed; inset: auto 0 0 0; height: 44vh; z-index: 500;
     border-right: none; border-top: 1px solid var(--line); }
   #map { height: 100vh; }
+  #timeline { left: 12px; right: 12px; bottom: calc(44vh + 10px); height: 52px; }
 }
