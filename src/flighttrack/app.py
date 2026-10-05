@@ -11,8 +11,10 @@ from fastapi.staticfiles import StaticFiles
 from flighttrack.config import Settings
 from flighttrack.sources.factory import build_source
 from flighttrack.tracker import Tracker
+import httpx
 from flighttrack.store import Store
 from flighttrack.recorder import Recorder
+from flighttrack.enrichment import fetch_flight
 
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -76,6 +78,14 @@ def create_app(settings: Settings) -> FastAPI:
         app.state.source = build_source(settings)
         app.state.store = Store(settings.db.path)
         app.state.recorder = Recorder(app.state.store, settings.logging.snapshot_interval_s)
+        import os
+        aero_key = os.environ.get("FLIGHTAWARE_API_KEY", "").strip()
+        app.state.aero_client = (
+            httpx.AsyncClient(base_url="https://aeroapi.flightaware.com/aeroapi",
+                              headers={"x-apikey": aero_key}, timeout=8.0)
+            if aero_key else None)
+        if not aero_key:
+            log.warning("FLIGHTAWARE_API_KEY not set — flight route lookups disabled")
         tasks = [asyncio.create_task(_ingest_loop(app)),
                  asyncio.create_task(_prune_loop(app))]
         try:
@@ -91,6 +101,8 @@ def create_app(settings: Settings) -> FastAPI:
             close = getattr(app.state.source, "aclose", None)
             if close is not None:
                 await close()
+            if app.state.aero_client is not None:
+                await app.state.aero_client.aclose()
             app.state.store.close()
 
     app = FastAPI(lifespan=lifespan)
@@ -124,6 +136,27 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/history")
     async def history(from_: float = Query(..., alias="from"), to: float = Query(...)):
         return await asyncio.to_thread(app.state.store.history, from_, to)
+
+    @app.get("/api/flight/{callsign}")
+    async def flight(callsign: str, hex: str = Query("")):
+        store = app.state.store
+        key = callsign
+        now = time.time()
+        cached = await asyncio.to_thread(store.get_cached_flight, key, now)
+        if cached is not None:
+            data, age = cached
+            # a known route is stable for the flight's duration; re-check unknowns sooner
+            ttl = 6 * 3600 if data.get("route_known") else 900
+            if age <= ttl:
+                return data
+        if app.state.aero_client is None:
+            return {"callsign": callsign, "route_known": False, "lookup_ok": False,
+                    "airline": None, "origin": None, "destination": None,
+                    "aircraft_type": None, "registration": None}
+        data = await fetch_flight(callsign, app.state.aero_client)
+        if data.get("lookup_ok"):          # only cache definitive answers, never transient failures
+            await asyncio.to_thread(store.put_cached_flight, key, data, now)
+        return data
 
     @app.get("/")
     def index():

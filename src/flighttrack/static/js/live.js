@@ -1,5 +1,5 @@
 import { initTheme, cycleTheme } from "/static/js/theme.js";
-import { getConfig } from "/static/js/api.js";
+import { getConfig, getFlight } from "/static/js/api.js";
 import { state, set, subscribe } from "/static/js/state.js";
 import { initMap, renderAircraft, onSelect, panTo } from "/static/js/map.js";
 import { connectLive } from "/static/js/socket.js";
@@ -19,15 +19,31 @@ let latestLive = [];
   initMap(cfg.receiver);
   const opts = () => ({ selected: state.selectedCallsign, labelsOn: state.labelsOn });
   initTimeline({ onLiveResume: () => { if (latestLive.length) { renderAircraft(latestLive, opts()); renderContacts(latestLive); } } });
-  onSelect((icao) => set({ selectedCallsign: icao }));
+  onSelect((icao) =>
+    set({ selectedCallsign: state.selectedCallsign === icao ? null : icao }));
 
   // React to selection from either a marker click or a contacts-row click.
   let lastSelected = null;
   subscribe((s) => {
     if (s.selectedCallsign !== lastSelected) {
       lastSelected = s.selectedCallsign;
-      if (s.selectedCallsign) panTo(s.selectedCallsign);
-      if (state.mode === "live") renderAircraft(latestLive, opts());
+      set({ flightDetail: null });
+      if (s.selectedCallsign) {
+        panTo(s.selectedCallsign);
+        const c = latestLive.find((a) => a.icao === s.selectedCallsign)
+          || (state.contacts || []).find((a) => a.icao === s.selectedCallsign);
+        if (c) {
+          getFlight(c.callsign || c.icao, c.icao)
+            .then((d) => {
+              if (state.selectedCallsign === c.icao) {
+                set({ flightDetail: { icao: c.icao, ...d } });
+                if (state.mode === "live") renderContacts(latestLive);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+      if (state.mode === "live") { renderAircraft(latestLive, opts()); renderContacts(latestLive); }
     }
   });
 

@@ -35,6 +35,11 @@ CREATE TABLE IF NOT EXISTS positions (
 );
 CREATE INDEX IF NOT EXISTS idx_positions_ts ON positions(ts);
 CREATE INDEX IF NOT EXISTS idx_positions_contact ON positions(contact_id);
+CREATE TABLE IF NOT EXISTS flight_cache (
+  key TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  fetched_at REAL NOT NULL
+);
 """
 
 
@@ -209,6 +214,24 @@ class Store:
             cur = self._db.execute("DELETE FROM positions WHERE ts<?", (before_ts,))
             self._db.commit()
             return cur.rowcount
+
+    def get_cached_flight(self, key: str, now: float):
+        import json
+        with self._lock:
+            row = self._db.execute(
+                "SELECT data, fetched_at FROM flight_cache WHERE key=?", (key,)).fetchone()
+        if row is None:
+            return None
+        return json.loads(row["data"]), now - row["fetched_at"]
+
+    def put_cached_flight(self, key: str, data: dict, now: float) -> None:
+        import json
+        with self._lock:
+            self._db.execute(
+                "INSERT INTO flight_cache (key, data, fetched_at) VALUES (?,?,?) "
+                "ON CONFLICT(key) DO UPDATE SET data=excluded.data, fetched_at=excluded.fetched_at",
+                (key, json.dumps(data), now))
+            self._db.commit()
 
     def close(self) -> None:
         with self._lock:

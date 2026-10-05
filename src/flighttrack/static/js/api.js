@@ -5,3 +5,5 @@ export const getPerHour = () => j("/api/stats/per-hour");
 export const getAirlines = () => j("/api/stats/airlines");
 export const getBuckets = (from, to, n) => j(`/api/stats/buckets?from=${from}&to=${to}&n=${n}`);
 export const getHistory = (from, to) => j(`/api/history?from=${from}&to=${to}`);
+export const getFlight = (callsign, hex) =>
+  j(`/api/flight/${encodeURIComponent(callsign)}?hex=${encodeURIComponent(hex || "")}`);

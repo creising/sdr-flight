@@ -94,6 +94,22 @@ def test_top_airlines_empty(store):
     assert store.top_airlines() == []
 
 
+def test_flight_cache_roundtrip_and_age(store):
+    assert store.get_cached_flight("AAL1", now=1000.0) is None
+    store.put_cached_flight("AAL1", {"airline": "American", "route_known": True}, now=1000.0)
+    got = store.get_cached_flight("AAL1", now=1050.0)
+    assert got is not None
+    data, age = got
+    assert data["airline"] == "American" and age == pytest.approx(50.0)
+
+
+def test_flight_cache_upsert(store):
+    store.put_cached_flight("AAL1", {"v": 1}, now=1000.0)
+    store.put_cached_flight("AAL1", {"v": 2}, now=2000.0)
+    data, age = store.get_cached_flight("AAL1", now=2000.0)
+    assert data["v"] == 2 and age == 0.0
+
+
 def test_prune_drops_old_positions_keeps_contacts(store):
     cid = store.open_contact("abc", "UAL1", ts=100.0)
     store.add_position(cid, 100.0, 40.1, -105.1, 35000, 450, 270, -12.0)
