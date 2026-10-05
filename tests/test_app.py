@@ -149,8 +149,12 @@ def test_flight_endpoint_caches(monkeypatch):
                 "aircraft_type": "A321", "registration": "N1",
                 "route_known": True, "lookup_ok": True}
 
+    async def no_photo(hex, client):
+        return None
+
     monkeypatch.setenv("FLIGHTAWARE_API_KEY", "TESTKEY")   # enables the aero client
     monkeypatch.setattr("flighttrack.app.fetch_flight", fake_fetch)
+    monkeypatch.setattr("flighttrack.app.fetch_photo", no_photo)
     s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
                  poll_interval_s=0.02, db=DbConfig(path=":memory:"))
     app = create_app(s)
@@ -170,8 +174,12 @@ def test_flight_endpoint_does_not_cache_transient_failure(monkeypatch):
         calls["n"] += 1
         return {"callsign": callsign, "route_known": False, "lookup_ok": False}  # transient error
 
+    async def no_photo(hex, client):
+        return None
+
     monkeypatch.setenv("FLIGHTAWARE_API_KEY", "TESTKEY")
     monkeypatch.setattr("flighttrack.app.fetch_flight", flaky_fetch)
+    monkeypatch.setattr("flighttrack.app.fetch_photo", no_photo)
     s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
                  poll_interval_s=0.02, db=DbConfig(path=":memory:"))
     app = create_app(s)
@@ -179,6 +187,37 @@ def test_flight_endpoint_does_not_cache_transient_failure(monkeypatch):
         c.get("/api/flight/AAL1", params={"hex": "aa"})
         c.get("/api/flight/AAL1", params={"hex": "aa"})
     assert calls["n"] == 2   # transient failures are NOT cached -> retried every time
+
+
+def test_flight_endpoint_merges_faa_and_photo(tmp_path, monkeypatch):
+    from flighttrack.faa import build_faa_db
+    from flighttrack.config import Settings, Receiver, DbConfig
+    (tmp_path / "M.txt").write_text(
+        "N-NUMBER,MFR MDL CODE,YEAR MFR,MODE S CODE HEX\n770TR,2072003,1979,AA6AC0\n")
+    (tmp_path / "R.txt").write_text("CODE,MFR,MODEL\n2072003,FAIRCHILD,SA227-AC\n")
+    faadb = str(tmp_path / "faa.db")
+    build_faa_db(str(tmp_path / "M.txt"), str(tmp_path / "R.txt"), faadb)
+
+    async def fake_route(callsign, client):
+        return {"callsign": callsign, "route_known": True, "lookup_ok": True, "airline": "AA",
+                "origin": {"code": "JFK"}, "destination": {"code": "LHR"},
+                "aircraft_type": "B77W", "registration": None}
+
+    async def fake_photo(hex, client):
+        return {"thumbnail": "https://t/x.jpg", "link": "https://p/x", "credit": "Jane"}
+
+    monkeypatch.setenv("FLIGHTAWARE_API_KEY", "K")
+    monkeypatch.setattr("flighttrack.app.fetch_flight", fake_route)
+    monkeypatch.setattr("flighttrack.app.fetch_photo", fake_photo)
+    s = Settings(source="synthetic", receiver=Receiver(lat=40.0, lon=-105.0),
+                 poll_interval_s=0.02, db=DbConfig(path=":memory:"), faa_db_path=faadb)
+    app = create_app(s)
+    with TestClient(app) as c:
+        r = c.get("/api/flight/AAL100", params={"hex": "aa6ac0"}).json()
+    assert r["make"] == "FAIRCHILD" and r["model"] == "SA227-AC" and r["year"] == "1979"
+    assert r["registration"] == "N770TR"      # FAA fills in when route reg is missing
+    assert r["photo"]["credit"] == "Jane"
+    assert r["origin"]["code"] == "JFK"        # route still present
 
 
 def test_buckets_endpoint():
