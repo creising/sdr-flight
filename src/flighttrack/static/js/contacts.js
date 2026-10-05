@@ -66,35 +66,68 @@ export function renderContacts(contacts) {
     }));
 }
 
+let lkKey = null;   // structural key of the currently-built card
+
 function renderLookup(subject, selected = false) {
   const el = document.getElementById("lookup");
   if (!el) return;
-  if (!subject) { el.innerHTML = `<div class="lookup-empty cond">NO CONTACTS</div>`; return; }
+  if (!subject) {
+    if (lkKey !== "empty") { el.innerHTML = `<div class="lookup-empty cond">NO CONTACTS</div>`; lkKey = "empty"; }
+    return;
+  }
+  // Rebuild the card ONLY when the subject, selection, or its flight detail changes —
+  // so the route/photo block (and its <img>) is created once, not on every telemetry tick.
+  const detailKey = selected ? JSON.stringify(state.flightDetail || null) : "";
+  const structKey = `${subject.icao}|${selected ? 1 : 0}|${detailKey}`;
+  if (structKey !== lkKey) {
+    lkKey = structKey;
+    el.innerHTML = cardShell(subject, selected);
+  }
+  updateTelemetry(el, subject);   // in-place numeric/colour/gauge updates every tick
+}
+
+function cardShell(subject, selected) {
   const cls = altClass(subject.alt_ft) || "high";
-  const elev = subject.elevation_deg == null ? 0 : Math.round(subject.elevation_deg);
-  const dir = subject.bearing_deg == null ? "" : compass16(subject.bearing_deg) + " · ";
-  const km = subject.distance_km == null ? "—" : subject.distance_km.toFixed(1);
-  const ft = subject.alt_ft == null ? "—" : Math.round(subject.alt_ft).toLocaleString();
   const label = selected ? "SELECTED" : "LOOK UP";
-  el.innerHTML = `
+  return `
     <div class="lk-top"><span class="cond lbl">${label}</span>
-      <span class="cond lk-dir">${dir}${elev}° UP</span></div>
+      <span class="cond lk-dir"></span></div>
     <div class="lk-body">
       <div class="lk-call cond">${escapeHtml(subject.callsign || subject.icao)}</div>
       <svg class="lk-gauge" width="72" height="72" viewBox="0 0 72 72">
         <path d="M68 66 A62 62 0 0 0 6 4" fill="none" stroke="var(--line-2)" stroke-width="2"/>
         <line x1="6" y1="66" x2="68" y2="66" stroke="var(--line-2)" stroke-width="2"/>
-        <line x1="6" y1="66" x2="68" y2="66" stroke="var(--alt-${cls})" stroke-width="2.5"
-          transform="rotate(${-elev} 6 66)"/>
-        <circle cx="68" cy="66" r="3" fill="var(--alt-${cls})" transform="rotate(${-elev} 6 66)"/>
+        <line class="gauge-needle" x1="6" y1="66" x2="68" y2="66" stroke="var(--alt-${cls})" stroke-width="2.5"/>
+        <circle class="gauge-dot" cx="68" cy="66" r="3" fill="var(--alt-${cls})"/>
       </svg>
     </div>
     <div class="lk-grid">
-      <div><span class="cond lbl">DIST</span><span class="num v">${km}<i>km</i></span></div>
-      <div><span class="cond lbl">ALT</span><span class="num v" style="color:var(--alt-${cls})">${ft}<i>ft</i></span></div>
-      <div><span class="cond lbl">ELEV</span><span class="num v">${elev}<i>°</i></span></div>
+      <div><span class="cond lbl">DIST</span><span class="num v v-dist"></span></div>
+      <div><span class="cond lbl">ALT</span><span class="num v v-alt"></span></div>
+      <div><span class="cond lbl">ELEV</span><span class="num v v-elev"></span></div>
     </div>
     ${selected ? renderRoute(subject) : ""}`;
+}
+
+function updateTelemetry(el, s) {
+  const color = `var(--alt-${altClass(s.alt_ft) || "high"})`;
+  const elev = s.elevation_deg == null ? 0 : Math.round(s.elevation_deg);
+  const dir = s.bearing_deg == null ? "" : compass16(s.bearing_deg) + " · ";
+  const km = s.distance_km == null ? "—" : s.distance_km.toFixed(1);
+  const ft = s.alt_ft == null ? "—" : Math.round(s.alt_ft).toLocaleString();
+  const q = (sel) => el.querySelector(sel);
+  const dirEl = q(".lk-dir"); if (dirEl) dirEl.textContent = `${dir}${elev}° UP`;
+  for (const cl of [".gauge-needle", ".gauge-dot"]) {
+    const g = q(cl);
+    if (g) {
+      g.setAttribute("transform", `rotate(${-elev} 6 66)`);
+      g.setAttribute(cl === ".gauge-dot" ? "fill" : "stroke", color);
+    }
+  }
+  const vd = q(".v-dist"), va = q(".v-alt"), ve = q(".v-elev");
+  if (vd) vd.innerHTML = `${km}<i>km</i>`;
+  if (va) { va.innerHTML = `${ft}<i>ft</i>`; va.style.color = color; }
+  if (ve) ve.innerHTML = `${elev}<i>°</i>`;
 }
 
 function renderRoute(subject) {
