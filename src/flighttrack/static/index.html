@@ -2,44 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Flight Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0d12" />
+  <title>Overhead</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/css/tokens.css" />
+  <link rel="stylesheet" href="/static/css/app.css" />
 </head>
 <body>
   <div id="app">
-    <aside id="sidebar">
-      <h1>Overhead <a href="/stats" class="statslink">stats →</a></h1>
-      <div id="controls">
-        <div class="mode">
-          <button id="mode-live" class="active">Live</button>
-          <button id="mode-playback">Playback</button>
-        </div>
-        <div id="playback-controls" hidden>
-          <select id="window">
-            <option value="3600">Last hour</option>
-            <option value="21600">Last 6h</option>
-            <option value="86400">Last 24h</option>
-          </select>
-          <div class="transport">
-            <button id="playpause">▶</button>
-            <select id="speed">
-              <option value="1">1×</option>
-              <option value="5" selected>5×</option>
-              <option value="20">20×</option>
-            </select>
-          </div>
-          <input id="scrubber" type="range" min="0" max="1000" value="0" />
-          <div id="playtime" class="meta"></div>
-        </div>
-      </div>
-      <div id="status">connecting…</div>
-      <ul id="contacts"></ul>
-    </aside>
+    <aside id="sidebar"></aside>
     <div id="map"></div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="/static/app.js"></script>
+  <script type="module" src="/static/js/live.js"></script>
 </body>
 </html>

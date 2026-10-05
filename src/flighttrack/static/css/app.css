@@ -1,0 +1,19 @@
+#app { display: grid; grid-template-columns: 372px minmax(0, 1fr); height: 100vh; }
+#sidebar { background: var(--sidebar); border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; overflow: hidden; }
+#map { height: 100%; }
+
+/* Dark basemap without a new dependency */
+:root[data-theme="dark"] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(.75) saturate(.35);
+}
+
+.ring-label { font-size: 11px; letter-spacing: .06em; color: var(--ring-label);
+  background: var(--bg); padding: 0 3px; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  #app { grid-template-columns: 1fr; }
+  #sidebar { position: fixed; inset: auto 0 0 0; height: 44vh; z-index: 500;
+    border-right: none; border-top: 1px solid var(--line); }
+  #map { height: 100vh; }
+}
