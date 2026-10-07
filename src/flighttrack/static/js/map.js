@@ -1,32 +1,47 @@
-import { altClass, isOverhead, escapeHtml, flightLevel } from "/static/js/util.js";
+import { altClass, isOverhead, escapeHtml, flightLevel, destPoint } from "/static/js/util.js";
 
-let map, layer, acLayer, trailLayer;
+let map, layer, acLayer, trailLayer, trackLayer;
 const markers = new Map();   // icao -> L.marker
 const trails = new Map();    // icao -> [[lat,lon], ...] (<=6)
 const trailMarkers = new Map(); // icao -> [L.circleMarker]
 let selectCb = null;
-const RINGS_KM = [5, 10, 20, 30];
+const RINGS_NMI = [5, 10, 20, 30];
+const M_PER_NMI = 1852;
+
+// Tracking: the full flown path (accumulated live) + a time-ahead heading ray
+// for a single tracked aircraft. Owned entirely here, driven by opts.track.
+const PROJECT_MIN = 5;              // look-ahead horizon for the projection ray
+let trackPathIcao = null;           // which icao the current path belongs to
+let trackPath = [];                 // [[lat,lon], ...] since tracking started
+let trackLine = null, projLine = null;
+const projWpts = [];                // per-minute waypoint dots + labels along the ray
 
 function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
 function altColorVar(cls) { return cls ? `var(--alt-${cls})` : "var(--muted)"; }
 
+const HOME_ZOOM = 10;
+let homeLatLon = null;   // receiver position, for the re-center button
+
 export function initMap(receiver) {
+  homeLatLon = [receiver.lat, receiver.lon];
   map = L.map("map", { zoomControl: false, attributionControl: false })
-    .setView([receiver.lat, receiver.lon], 10);
+    .setView([receiver.lat, receiver.lon], HOME_ZOOM);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     { maxZoom: 18 }).addTo(map);
   layer = L.layerGroup().addTo(map);       // rings + home
   trailLayer = L.layerGroup().addTo(map);
+  trackLayer = L.layerGroup().addTo(map);  // tracked flight: path + projection
   acLayer = L.layerGroup().addTo(map);
 
-  for (const km of RINGS_KM) {
+  for (const nmi of RINGS_NMI) {
+    const radiusM = nmi * M_PER_NMI;
     L.circle([receiver.lat, receiver.lon], {
-      radius: km * 1000, fill: false, color: css("--ring") || "#2a3542",
+      radius: radiusM, fill: false, color: css("--ring") || "#2a3542",
       weight: 1, interactive: false,
     }).addTo(layer);
-    const edge = L.latLng(receiver.lat + km / 111, receiver.lon);
+    const edge = L.latLng(receiver.lat + radiusM / 111000, receiver.lon);
     L.marker(edge, { interactive: false, keyboard: false, icon: L.divIcon({
-      className: "", html: `<div class="ring-label">${km} km</div>`,
+      className: "", html: `<div class="ring-label">${nmi} nmi</div>`,
       iconSize: [44, 14], iconAnchor: [22, 7],
     }) }).addTo(layer);
   }
@@ -104,10 +119,71 @@ export function renderAircraft(list, opts = {}) {
     for (const t of (trailMarkers.get(icao) || [])) trailLayer.removeLayer(t);
     trailMarkers.delete(icao); trails.delete(icao);
   }
+  updateTrack(list, opts.track);
+}
+
+// Accumulate and draw the tracked flight's flown path + time-ahead heading ray.
+function updateTrack(list, trackIcao) {
+  if (trackIcao !== trackPathIcao) {
+    clearTrack();
+    trackPathIcao = trackIcao;
+    // Seed with the trail already on the map so a path is visible immediately.
+    if (trackIcao) trackPath = (trails.get(trackIcao) || []).slice();
+  }
+  if (!trackIcao) return;
+  const a = list.find((x) => x.icao === trackIcao);
+  if (!a || a.lat == null || a.lon == null) return;   // keep existing path if it blinks out
+
+  // Append the new position (skip duplicates so a parked plane doesn't pile points).
+  const last = trackPath[trackPath.length - 1];
+  if (!last || last[0] !== a.lat || last[1] !== a.lon) trackPath.push([a.lat, a.lon]);
+
+  const color = css(`--alt-${altClass(a.alt_ft)}`) || css("--text") || "#e8edf2";
+  if (!trackLine) trackLine = L.polyline(trackPath, {
+    className: "track-path", color, weight: 3, opacity: 1, interactive: false,
+  }).addTo(trackLayer);
+  else { trackLine.setLatLngs(trackPath); trackLine.setStyle({ color }); }
+
+  // Time-ahead projection: a heading ray with a waypoint dot every minute,
+  // labelled with the minutes-ahead, out to PROJECT_MIN at current ground speed.
+  const gs = a.ground_speed_kt, trk = a.track_deg;
+  if (gs == null || gs <= 0 || trk == null) { clearProjection(); return; }
+  const end = destPoint(a.lat, a.lon, trk, gs * (PROJECT_MIN / 60));
+  if (!projLine) projLine = L.polyline([[a.lat, a.lon], end], {
+    className: "track-projection", color, weight: 2.5, opacity: 0.75,
+    dashArray: "6 6", interactive: false,
+  }).addTo(trackLayer);
+  else { projLine.setLatLngs([[a.lat, a.lon], end]); projLine.setStyle({ color }); }
+
+  for (const m of projWpts) trackLayer.removeLayer(m);
+  projWpts.length = 0;
+  for (let k = 1; k <= PROJECT_MIN; k++) {
+    const wp = destPoint(a.lat, a.lon, trk, gs * (k / 60));
+    projWpts.push(L.circleMarker(wp, {
+      radius: 3, color, fillColor: color, fillOpacity: 1, weight: 0, interactive: false,
+    }).addTo(trackLayer));
+    projWpts.push(L.marker(wp, { interactive: false, keyboard: false, icon: L.divIcon({
+      className: "", html: `<div class="wp-label">${k}′</div>`,
+      iconSize: [22, 12], iconAnchor: [-5, 6],
+    }) }).addTo(trackLayer));
+  }
+}
+
+function clearProjection() {
+  if (projLine) { trackLayer.removeLayer(projLine); projLine = null; }
+  for (const m of projWpts) trackLayer.removeLayer(m);
+  projWpts.length = 0;
+}
+
+function clearTrack() {
+  if (trackLine) { trackLayer.removeLayer(trackLine); trackLine = null; }
+  clearProjection();
+  trackPath = [];
 }
 
 export function onSelect(cb) { selectCb = cb; }
 export function panTo(icao) { const m = markers.get(icao); if (m && map) map.panTo(m.getLatLng()); }
+export function recenterMap() { if (map && homeLatLon) map.setView(homeLatLon, HOME_ZOOM); }
 export function getMap() { return map; }
 
 export function clearAircraft() {
@@ -115,6 +191,7 @@ export function clearAircraft() {
   markers.clear();
   for (const [, ms] of trailMarkers) for (const t of ms) trailLayer.removeLayer(t);
   trailMarkers.clear(); trails.clear();
+  clearTrack(); trackPathIcao = null;
 }
 
 function interp(points, t) {

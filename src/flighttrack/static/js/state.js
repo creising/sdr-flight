@@ -1,6 +1,6 @@
 export const state = {
   mode: "live", playheadTime: null, playing: false, speed: 5, window: 3600,
-  selectedCallsign: null, labelsOn: true, theme: "auto", sheetSnap: "peek",
+  selectedCallsign: null, trackIcao: null, labelsOn: true, theme: "auto", sheetSnap: "peek",
   contacts: [], buckets: [], tracks: [], stats: null, receiver: null,
   flightDetail: null,   // { icao, airline, origin, destination, aircraft_type, route_known }
 };

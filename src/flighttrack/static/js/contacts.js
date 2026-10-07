@@ -1,10 +1,13 @@
 import { set, state } from "/static/js/state.js";
-import { escapeHtml, altClass, isOverhead, lookupSubject, compass16 } from "/static/js/util.js";
+import { escapeHtml, altClass, isOverhead, lookupSubject, compass16, kmToNmi } from "/static/js/util.js";
 import { openRaw } from "/static/js/rawinfo.js";
 
 export function renderSidebar(container, onMode) {
   container.innerHTML = `
-    <button class="sheet-handle" aria-label="expand"></button>
+    <div class="sheet-bar">
+      <button class="sheet-handle" aria-label="Expand or collapse panel"></button>
+      <button class="sheet-close" aria-label="Close panel">✕</button>
+    </div>
     <header class="sb-header">
       <span class="wordmark cond">OVERHEAD</span>
       <span class="sb-head-right">
@@ -19,7 +22,7 @@ export function renderSidebar(container, onMode) {
     <div id="status" class="status">connecting…</div>
     <div id="lookup" class="lookup-card"></div>
     <div class="col-head">
-      <span class="cond">NEAREST FIRST</span><span class="cond num">KM</span>
+      <span class="cond">NEAREST FIRST</span><span class="cond num">NMI</span>
       <span class="cond num">FT</span><span class="cond num">ELEV</span>
     </div>
     <ul id="contacts" class="contacts"></ul>
@@ -43,7 +46,7 @@ export function renderContacts(contacts) {
     .sort((a, b) => (a.distance_km ?? 1e9) - (b.distance_km ?? 1e9));
   ul.innerHTML = rows.map((a) => {
     const cls = altClass(a.alt_ft) || "high";
-    const km = a.distance_km == null ? "—" : (a.distance_km < 10 ? a.distance_km.toFixed(1) : Math.round(a.distance_km));
+    const nmi = a.distance_km == null ? "—" : (kmToNmi(a.distance_km) < 10 ? kmToNmi(a.distance_km).toFixed(1) : Math.round(kmToNmi(a.distance_km)));
     const ft = a.alt_ft == null ? "—" : Math.round(a.alt_ft).toLocaleString();
     const elev = a.elevation_deg == null ? "—" : Math.round(a.elevation_deg);
     const oh = isOverhead(a.elevation_deg)
@@ -55,7 +58,7 @@ export function renderContacts(contacts) {
         <span class="cond c-name">${escapeHtml((a.callsign || a.icao || "").toUpperCase())}</span>
         <span class="c-sub">${oh}</span>
       </span>
-      <span class="num c-km">${km}</span>
+      <span class="num c-km">${nmi}</span>
       <span class="num c-ft" style="color:var(--alt-${cls})">${ft}</span>
       <span class="num c-elev">${elev}°</span>
     </li>`;
@@ -68,6 +71,12 @@ export function renderContacts(contacts) {
 }
 
 let lkKey = null;   // structural key of the currently-built card
+
+function paintTrack(btn, icao) {
+  const on = state.trackIcao === icao;
+  btn.textContent = on ? "TRACKING" : "TRACK";
+  btn.classList.toggle("active", on);
+}
 
 function renderLookup(subject, selected = false) {
   const el = document.getElementById("lookup");
@@ -85,6 +94,16 @@ function renderLookup(subject, selected = false) {
     el.innerHTML = cardShell(subject, selected);
     el.querySelector(".lk-more")?.addEventListener("click",
       () => openRaw(subject.icao, subject.callsign || subject.icao));
+    el.querySelector(".lk-close")?.addEventListener("click",
+      () => set({ selectedCallsign: null }));
+    const trackBtn = el.querySelector(".lk-track");
+    if (trackBtn) {
+      paintTrack(trackBtn, subject.icao);
+      trackBtn.addEventListener("click", () => {
+        set({ trackIcao: state.trackIcao === subject.icao ? null : subject.icao });
+        paintTrack(trackBtn, subject.icao);
+      });
+    }
   }
   updateTelemetry(el, subject);   // in-place numeric/colour/gauge updates every tick
 }
@@ -94,7 +113,9 @@ function cardShell(subject, selected) {
   const label = selected ? "SELECTED" : "LOOK UP";
   return `
     <div class="lk-top"><span class="cond lbl">${label}</span>
-      <span class="cond lk-dir"></span></div>
+      <span class="lk-top-right"><span class="cond lk-dir"></span>${
+        selected ? `<button class="lk-close" aria-label="Close details" title="Back to list">×</button>` : ""
+      }</span></div>
     <div class="lk-body">
       <div class="lk-call cond">${escapeHtml((subject.callsign || subject.icao || "").toUpperCase())}</div>
       <svg class="lk-gauge" width="72" height="72" viewBox="0 0 72 72">
@@ -115,14 +136,15 @@ function cardShell(subject, selected) {
       <div><span class="cond lbl">SQUAWK</span><span class="num v2 v-sq"></span></div>
       <div><span class="cond lbl">SIGNAL</span><span class="v2 v-sig"></span></div>
     </div>
-    ${selected ? `<button class="lk-more cond">ⓘ&nbsp; RAW ADS-B DATA</button>${renderRoute(subject)}` : ""}`;
+    ${selected ? `<button class="lk-track cond">TRACK</button>` +
+      `<button class="lk-more cond">ⓘ&nbsp; RAW ADS-B DATA</button>${renderRoute(subject)}` : ""}`;
 }
 
 function updateTelemetry(el, s) {
   const color = `var(--alt-${altClass(s.alt_ft) || "high"})`;
   const elev = s.elevation_deg == null ? 0 : Math.round(s.elevation_deg);
   const dir = s.bearing_deg == null ? "" : compass16(s.bearing_deg) + " · ";
-  const km = s.distance_km == null ? "—" : s.distance_km.toFixed(1);
+  const nmi = s.distance_km == null ? "—" : kmToNmi(s.distance_km).toFixed(1);
   const ft = s.alt_ft == null ? "—" : Math.round(s.alt_ft).toLocaleString();
   const q = (sel) => el.querySelector(sel);
   const dirEl = q(".lk-dir"); if (dirEl) dirEl.textContent = `${dir}${elev}° UP`;
@@ -133,8 +155,10 @@ function updateTelemetry(el, s) {
       g.setAttribute(cl === ".gauge-dot" ? "fill" : "stroke", color);
     }
   }
+  const trackBtn = q(".lk-track");
+  if (trackBtn) paintTrack(trackBtn, s.icao);
   const vd = q(".v-dist"), va = q(".v-alt"), ve = q(".v-elev");
-  if (vd) vd.innerHTML = `${km}<i>km</i>`;
+  if (vd) vd.innerHTML = `${nmi}<i>nmi</i>`;
   if (va) { va.innerHTML = `${ft}<i>ft</i>`; va.style.color = color; }
   if (ve) ve.innerHTML = `${elev}<i>°</i>`;
 

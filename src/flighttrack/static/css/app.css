@@ -10,6 +10,8 @@
 
 .ring-label { font-size: 11px; letter-spacing: .06em; color: var(--ring-label);
   background: var(--bg); padding: 0 3px; white-space: nowrap; }
+.wp-label { font-size: 10px; font-weight: 600; letter-spacing: .04em; color: var(--text);
+  white-space: nowrap; pointer-events: none; text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg); }
 
 /* Aircraft marker data-block label + selection */
 .ac-wrap { position: relative; }
@@ -29,8 +31,16 @@
 .theme-toggle { background: transparent; border: 1px solid var(--line); color: var(--muted);
   width: 28px; height: 28px; border-radius: 7px; cursor: pointer; font-size: 14px; line-height: 1; }
 .theme-toggle:hover { color: var(--text); border-color: var(--line-2); }
-.sheet-handle { display: none; }
+.sheet-bar { display: none; }
 #topbar { display: none; }
+
+/* Re-center button floating over the map */
+#recenter { position: fixed; top: 20px; right: 20px; z-index: 600;
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 10px; background: rgba(13, 17, 23, .88);
+  color: var(--text); cursor: pointer; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); }
+:root[data-theme="light"] #recenter { background: rgba(255, 255, 255, .9); }
+#recenter:hover { border-color: var(--line-2); }
 .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px;
   background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .mode-seg { height: 36px; border: 0; border-radius: 7px; background: transparent; cursor: pointer;
@@ -47,9 +57,14 @@
 .lookup-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
   padding: 20px; margin: 4px 0 2px; }
 .lookup-empty { color: var(--dim); letter-spacing: .14em; font-weight: 600; text-align: center; padding: 18px 0; }
-.lk-top { display: flex; justify-content: space-between; align-items: baseline; }
+.lk-top { display: flex; justify-content: space-between; align-items: center; }
+.lk-top-right { display: flex; align-items: center; gap: 10px; }
 .lbl { font-size: 11px; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
 .lk-dir { font-size: 13px; letter-spacing: .06em; color: var(--text); font-weight: 600; }
+.lk-close { flex: none; width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+  font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.lk-close:hover { color: var(--text); border-color: var(--line-2); }
 .lk-body { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 14px; }
 .lk-call { font-size: 48px; font-weight: 600; letter-spacing: .04em; line-height: 1; }
 .lk-gauge { flex: none; }
@@ -85,6 +100,14 @@
   background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
   color: var(--muted); font-size: 11px; letter-spacing: .12em; font-weight: 600; }
 .lk-more:hover { color: var(--text); border-color: var(--line-2); }
+
+.lk-track { width: 100%; margin-top: 12px; padding: 9px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--muted); font-size: 11px; letter-spacing: .12em; font-weight: 600; }
+.lk-track:hover { color: var(--text); border-color: var(--line-2); }
+.lk-track.active { background: var(--accent, oklch(0.80 0.15 155)); color: var(--bg);
+  border-color: transparent; }
+.lk-track.active:hover { color: var(--bg); }
 
 /* Raw ADS-B dialog */
 #rawdialog { position: fixed; inset: 0; z-index: 1000; display: none; }
@@ -189,10 +212,24 @@
     border-right: none; border-top: 1px solid var(--line); border-radius: 24px 24px 0 0;
     padding: 0 16px calc(env(safe-area-inset-bottom) + 12px);
     transition: height .25s ease; overflow: hidden; }
-  #sidebar.expanded { height: 72vh; overflow-y: auto; }
-  .sheet-handle { display: block; width: 40px; height: 5px; border: 0; border-radius: 99px;
-    background: var(--line-2); margin: 8px auto 2px; cursor: pointer; }
+  #sidebar.expanded { height: 72vh; overflow-y: auto; overscroll-behavior: contain; }
+  /* Sticky top bar: the drag handle stays put when the sheet scrolls (e.g. the
+     aircraft photo loads), and an ✕ close button appears when expanded. */
+  .sheet-bar { display: block; position: sticky; top: 0; z-index: 5;
+    padding: 10px 0 6px; margin: 0; background: var(--sidebar); }
+  .sheet-handle { display: block; width: 100%; height: 18px; padding: 0; margin: 0;
+    border: 0; background: transparent; cursor: grab; touch-action: none; }
+  .sheet-handle::before { content: ""; display: block; width: 40px; height: 5px;
+    border-radius: 99px; background: var(--line-2); margin: 0 auto; }
+  .sheet-close { display: none; }
+  #sidebar.expanded .sheet-close { position: absolute; top: 4px; right: 2px;
+    display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+    color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; z-index: 6; }
   .sb-header { padding: 6px 0 10px; }
+
+  #recenter { top: calc(env(safe-area-inset-top) + 58px); right: 16px;
+    width: 44px; height: 44px; }
 
   #timeline { left: 12px; right: 12px; bottom: 210px; height: 52px; }
   #timeline.replay { bottom: 210px; }

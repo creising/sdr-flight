@@ -1,5 +1,5 @@
 import { getSummary, getPerHour, getAirlines } from "/static/js/api.js";
-import { escapeHtml } from "/static/js/util.js";
+import { escapeHtml, kmToNmi } from "/static/js/util.js";
 import { initTheme, cycleTheme } from "/static/js/theme.js";
 
 initTheme();
@@ -20,15 +20,15 @@ function recordTile(label, value, sub) {
 
 async function renderSummary() {
   const s = await getSummary();
-  const closest = s.closest ? `${escapeHtml(s.closest.callsign || s.closest.icao)} · ${s.closest.km.toFixed(1)} km` : "—";
-  const farthest = s.farthest ? `${escapeHtml(s.farthest.callsign || s.farthest.icao)} · ${s.farthest.km.toFixed(1)} km` : "—";
+  const closest = s.closest ? `${escapeHtml(s.closest.callsign || s.closest.icao)} · ${kmToNmi(s.closest.km).toFixed(1)} nmi` : "—";
+  const farthest = s.farthest ? `${escapeHtml(s.farthest.callsign || s.farthest.icao)} · ${kmToNmi(s.farthest.km).toFixed(1)} nmi` : "—";
   const high = s.highest_alt_ft != null ? `${Math.round(s.highest_alt_ft).toLocaleString()} ft` : "—";
   document.getElementById("headline").innerHTML =
     headlineTile("Seen today", s.sessions_today, "contacts since midnight") +
     headlineTile("Seen all-time", s.sessions_total, `${s.unique_total} unique aircraft`);
   document.getElementById("records").innerHTML =
-    recordTile("Closest pass", s.closest ? `${s.closest.km.toFixed(1)} km` : "—", s.closest ? escapeHtml(s.closest.callsign || s.closest.icao) : "") +
-    recordTile("Farthest", s.farthest ? `${Math.round(s.farthest.km)} km` : "—", s.farthest ? escapeHtml(s.farthest.callsign || s.farthest.icao) : "") +
+    recordTile("Closest pass", s.closest ? `${kmToNmi(s.closest.km).toFixed(1)} nmi` : "—", s.closest ? escapeHtml(s.closest.callsign || s.closest.icao) : "") +
+    recordTile("Farthest", s.farthest ? `${Math.round(kmToNmi(s.farthest.km))} nmi` : "—", s.farthest ? escapeHtml(s.farthest.callsign || s.farthest.icao) : "") +
     recordTile("Highest", high, "") +
     recordTile("Busiest hour", s.busiest_hour || "—", "");
 }

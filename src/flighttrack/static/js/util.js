@@ -6,6 +6,24 @@ export function elevationDeg(altFt, groundKm) {
   if (altFt == null || groundKm == null || groundKm <= 0) return 90;
   return (Math.atan((altFt * 0.0003048) / groundKm) * 180) / Math.PI;
 }
+// Distance is stored and transmitted in km; the UI displays nautical miles.
+export const NMI_PER_KM = 0.5399568;
+export function kmToNmi(km) { return km == null ? null : km * NMI_PER_KM; }
+// Destination point [lat, lon] reached from (lat, lon) travelling distNmi along
+// a great circle on bearing bearingDeg. Standard spherical "direct" formula.
+export function destPoint(lat, lon, bearingDeg, distNmi) {
+  const R = 3440.065;                       // mean Earth radius in nautical miles
+  const d = distNmi / R;                    // angular distance (radians)
+  const br = (bearingDeg * Math.PI) / 180;
+  const la1 = (lat * Math.PI) / 180;
+  const lo1 = (lon * Math.PI) / 180;
+  const la2 = Math.asin(Math.sin(la1) * Math.cos(d) + Math.cos(la1) * Math.sin(d) * Math.cos(br));
+  const lo2 = lo1 + Math.atan2(
+    Math.sin(br) * Math.sin(d) * Math.cos(la1),
+    Math.cos(d) - Math.sin(la1) * Math.sin(la2),
+  );
+  return [(la2 * 180) / Math.PI, (((lo2 * 180) / Math.PI + 540) % 360) - 180];
+}
 export function isOverhead(elevDeg) { return elevDeg != null && elevDeg >= 40; }
 export function lookupSubject(contacts) {
   let best = null;

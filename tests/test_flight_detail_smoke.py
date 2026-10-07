@@ -53,6 +53,22 @@ def test_clicking_plane_shows_route(server, page):
     assert "PHL" in txt and "TPA" in txt and "American Airlines" in txt
 
 
+def test_close_button_returns_to_list(server, page):
+    # Selecting a flight must be reversible via the card's close (×) button.
+    url, app = server
+    page.goto(url)
+    page.wait_for_selector(".contact-row", timeout=8000)
+    page.locator(".contact-row").first.click()
+    # The SELECTED card appears with a close button.
+    page.wait_for_selector(".lk-close", timeout=6000)
+    assert page.locator(".lk-top .lbl").inner_text().strip() == "SELECTED"
+    page.locator(".lk-close").click()
+    # Selection is cleared: close button gone and state reset.
+    page.wait_for_selector(".lk-close", state="detached", timeout=6000)
+    assert page.evaluate(
+        "async () => (await import('/static/js/state.js')).state.selectedCallsign") is None
+
+
 def test_selected_photo_does_not_flicker(server, page):
     # The photo <img> must NOT be recreated on every telemetry tick (no reload/flicker).
     url, app = server
