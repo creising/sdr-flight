@@ -31,7 +31,7 @@ def elevation_deg(ground_distance_km: float, observer_alt_m: float, target_alt_m
     return math.degrees(math.atan2(dh, d_m))
 
 
-def enrich(raw: RawAircraft, receiver: Receiver) -> AircraftView:
+def enrich(raw: RawAircraft, receiver: Receiver, horizon=None) -> AircraftView:
     v = AircraftView(**raw.__dict__)
     if raw.lat is None or raw.lon is None:
         return v
@@ -39,4 +39,7 @@ def enrich(raw: RawAircraft, receiver: Receiver) -> AircraftView:
     v.bearing_deg = initial_bearing_deg(receiver.lat, receiver.lon, raw.lat, raw.lon)
     if raw.alt_ft is not None:
         v.elevation_deg = elevation_deg(v.distance_km, receiver.alt_m, raw.alt_ft * _FT_TO_M)
+        if horizon is not None and v.elevation_deg > 0 \
+                and v.elevation_deg > horizon.obstruction_deg(v.bearing_deg):
+            v.visible = True
     return v

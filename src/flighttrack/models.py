@@ -35,3 +35,4 @@ class AircraftView:
     distance_km: float | None = None
     bearing_deg: float | None = None
     elevation_deg: float | None = None
+    visible: bool = False       # above the local terrain skyline (if a profile is loaded)
