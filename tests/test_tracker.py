@@ -48,6 +48,48 @@ def test_raw_for_and_to_json_excludes_raw(rx):
     assert "raw" not in j["aircraft"][0]   # the full stream stays lean
 
 
+def _alt(t, icao="aaa"):
+    return {a.icao: a.alt_ft for a in t.snapshot()}[icao]
+
+
+def test_altitude_spike_rejected_carries_forward(rx):
+    # A single corrupt frame (30k -> 114k in ~1s) must not replace the real altitude.
+    t = Tracker(rx, stale_timeout_s=60)
+    t.update([raw("aaa", alt=30000)], now=100.0)
+    t.update([raw("aaa", alt=114400)], now=101.0)
+    assert _alt(t) == 30000
+
+
+def test_reading_after_spike_is_accepted(rx):
+    # After a rejected spike, the next plausible reading flows through normally.
+    t = Tracker(rx, stale_timeout_s=60)
+    t.update([raw("aaa", alt=30000)], now=100.0)
+    t.update([raw("aaa", alt=114400)], now=101.0)   # rejected -> 30000
+    t.update([raw("aaa", alt=30050)], now=102.0)
+    assert _alt(t) == 30050
+
+
+def test_normal_climb_is_accepted(rx):
+    # A realistic climb (7000 ft over 120s ≈ 3500 fpm) is NOT a spike.
+    t = Tracker(rx, stale_timeout_s=600)
+    t.update([raw("aaa", alt=30000)], now=100.0)
+    t.update([raw("aaa", alt=37000)], now=220.0)
+    assert _alt(t) == 37000
+
+
+def test_absurd_first_frame_dropped(rx):
+    # No prior reading to compare, but the value is physically impossible -> dropped.
+    t = Tracker(rx, stale_timeout_s=60)
+    t.update([raw("aaa", alt=120000)], now=100.0)
+    assert _alt(t) is None
+
+
+def test_negative_absurd_altitude_dropped(rx):
+    t = Tracker(rx, stale_timeout_s=60)
+    t.update([raw("aaa", alt=-5000)], now=100.0)
+    assert _alt(t) is None
+
+
 def test_positionless_excluded_from_json_but_in_snapshot(rx):
     t = Tracker(rx, stale_timeout_s=30)
     noposn = RawAircraft(icao="ghost", callsign=None, lat=None, lon=None, alt_ft=None,
