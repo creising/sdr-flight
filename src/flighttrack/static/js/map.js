@@ -66,6 +66,9 @@ function icon(a, opts = {}) {
   const sel = selected
     ? `<circle cx="17" cy="17" r="15" fill="none" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="3 3"/>`
     : "";
+  const halo = a.visible
+    ? `<circle cx="17" cy="17" r="16" fill="${color}" opacity="0.18" class="ac-halo"/>`
+    : "";
   const label = opts.labelsOn
     ? `<div class="ac-label"><span class="al-call">${escapeHtml((a.callsign || a.icao || "").toUpperCase())}</span>` +
       `<span class="al-fl" style="color:${color}">FL${flightLevel(a.alt_ft)}</span></div>`
@@ -73,7 +76,7 @@ function icon(a, opts = {}) {
   return L.divIcon({
     className: "", iconSize: [34, 34], iconAnchor: [17, 17],
     html: `<div class="ac-wrap${selected ? " selected" : ""}">` +
-      `<svg width="34" height="34" viewBox="0 0 34 34">${ring}${sel}` +
+      `<svg width="34" height="34" viewBox="0 0 34 34">${halo}${ring}${sel}` +
       `<g transform="translate(5,5) rotate(${a.track_deg ?? 0} 12 12)">` +
       `<polygon class="ac-marker" points="12,1 21,22 12,17 3,22" fill="${color}" ` +
       `stroke="var(--bg)" stroke-width="1.5"/></g></svg>${label}</div>`,

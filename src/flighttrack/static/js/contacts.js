@@ -51,12 +51,14 @@ export function renderContacts(contacts) {
     const elev = a.elevation_deg == null ? "—" : Math.round(a.elevation_deg);
     const oh = isOverhead(a.elevation_deg)
       ? `<span class="oh-tag cond" style="background:var(--alt-${cls})">OVERHEAD</span> ` : "";
+    const vis = a.visible
+      ? `<span class="vis-tag cond">VISIBLE</span> ` : "";
     return `<li class="contact-row${isOverhead(a.elevation_deg) ? " overhead" : ""}" data-icao="${escapeHtml(a.icao)}">
       <span class="c-call">
         <svg class="row-chevron" width="12" height="12" viewBox="0 0 24 24" style="transform:rotate(${a.track_deg ?? 0}deg)">
           <polygon points="12,1 21,22 12,17 3,22" fill="var(--alt-${cls})"/></svg>
         <span class="cond c-name">${escapeHtml((a.callsign || a.icao || "").toUpperCase())}</span>
-        <span class="c-sub">${oh}</span>
+        <span class="c-sub">${oh}${vis}</span>
       </span>
       <span class="num c-km">${nmi}</span>
       <span class="num c-ft" style="color:var(--alt-${cls})">${ft}</span>
@@ -113,7 +115,7 @@ function cardShell(subject, selected) {
   const label = selected ? "SELECTED" : "LOOK UP";
   return `
     <div class="lk-top"><span class="cond lbl">${label}</span>
-      <span class="lk-top-right"><span class="cond lk-dir"></span>${
+      <span class="lk-top-right"><span class="lk-vis cond"></span><span class="cond lk-dir"></span>${
         selected ? `<button class="lk-close" aria-label="Close details" title="Back to list">×</button>` : ""
       }</span></div>
     <div class="lk-body">
@@ -148,6 +150,7 @@ function updateTelemetry(el, s) {
   const ft = s.alt_ft == null ? "—" : Math.round(s.alt_ft).toLocaleString();
   const q = (sel) => el.querySelector(sel);
   const dirEl = q(".lk-dir"); if (dirEl) dirEl.textContent = `${dir}${elev}° UP`;
+  const visEl = q(".lk-vis"); if (visEl) visEl.textContent = s.visible ? "VISIBLE" : "";
   for (const cl of [".gauge-needle", ".gauge-dot"]) {
     const g = q(cl);
     if (g) {

@@ -91,3 +91,16 @@ def test_sidebar_shell(server, page):
     assert page.locator("#sidebar .wordmark").inner_text().strip() == "OVERHEAD"
     assert page.locator(".mode-seg").count() == 2             # Live / Replay segments
     assert page.locator("#status").count() == 1
+
+
+from flighttrack.horizon import Horizon
+
+
+def test_visible_indicator_renders(server, page):
+    url, app = server
+    # Flat skyline -> every positioned synthetic plane above the receiver is "visible".
+    app.state.tracker.horizon = Horizon(90.0, [0, 0, 0, 0])
+    page.goto(url)
+    page.wait_for_selector(".ac-marker", timeout=8000)
+    page.wait_for_selector(".ac-halo", timeout=8000)          # glow on the map
+    assert page.locator(".vis-tag").count() >= 1              # VISIBLE badge in the list

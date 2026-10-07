@@ -145,6 +145,9 @@
 .c-name { font-size: 19px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis; }
 .c-sub { font-size: 12px; color: var(--muted); }
+.vis-tag, .lk-vis { font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  color: var(--bg); background: oklch(0.82 0.13 195); border-radius: 4px; padding: 1px 5px; }
+.lk-vis:empty { display: none; }
 .oh-tag { font-size: 11px; font-weight: 600; color: var(--bg); padding: 0 4px; border-radius: 3px; letter-spacing: .04em; }
 .contact-row .num { text-align: right; font-size: 16px; }
 .c-elev { color: var(--text-2); }
