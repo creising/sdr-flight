@@ -35,3 +35,13 @@ def test_single_peak_blocks_its_azimuth():
     expected = math.degrees(math.atan2((2000.0 - 100.0) - drop, 5000.0))
     assert abs(east - expected) < 1.0           # within a degree of the analytic value
     assert h[0] < 1e-6 and h[2] < 1e-6 and h[3] < 1e-6   # other directions flat
+
+
+def test_observer_elevation_uses_dem_ground():
+    assert build_horizon.observer_elevation(
+        lambda la, lo: 700.0, 40.0, -105.0, obs_agl_m=8, fallback_m=650) == 708.0
+
+
+def test_observer_elevation_falls_back_when_no_sample():
+    assert build_horizon.observer_elevation(
+        lambda la, lo: None, 40.0, -105.0, obs_agl_m=8, fallback_m=650) == 658.0

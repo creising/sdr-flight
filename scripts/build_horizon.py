@@ -45,6 +45,14 @@ def compute_horizon(sample_elev, origin_lat, origin_lon, obs_alt_m,
     return out
 
 
+def observer_elevation(sample_elev, lat, lon, obs_agl_m, fallback_m):
+    """Observer elevation (m): DEM ground at the origin + antenna height,
+    falling back to a passed MSL value only when the DEM has no sample there."""
+    ground = sample_elev(lat, lon)
+    base = ground if ground is not None else fallback_m
+    return base + obs_agl_m
+
+
 def _tile_name(lat, lon):
     ns = "N" if lat >= 0 else "S"
     ew = "E" if lon >= 0 else "W"
@@ -112,6 +120,8 @@ def main() -> None:
     ap.add_argument("--lat", type=float)
     ap.add_argument("--lon", type=float)
     ap.add_argument("--alt-m", type=float)
+    ap.add_argument("--obs-agl-m", type=float, default=8.0,
+                    help="antenna height above ground level (m)")
     ap.add_argument("--radius-km", type=float, default=40.0)
     ap.add_argument("--az-step-deg", type=float, default=1.0)
     ap.add_argument("--sample-step-m", type=float, default=30.0)
@@ -131,11 +141,15 @@ def main() -> None:
     tiles = _load_tiles(lat, lon, args.radius_km, args.cache_dir)
     if not tiles:
         sys.exit("No elevation tiles available for that location.")
-    horizon = compute_horizon(_make_sampler(tiles), lat, lon, alt,
+    sampler = _make_sampler(tiles)
+    ground = sampler(lat, lon)
+    obs_elev = observer_elevation(sampler, lat, lon, args.obs_agl_m, alt)
+    horizon = compute_horizon(sampler, lat, lon, obs_elev,
                               args.radius_km, args.az_step_deg, args.sample_step_m)
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w") as f:
-        json.dump({"origin": {"lat": lat, "lon": lon, "alt_m": alt},
+        json.dump({"origin": {"lat": lat, "lon": lon, "alt_m": obs_elev,
+                              "ground_m": ground, "obs_agl_m": args.obs_agl_m},
                    "radius_km": args.radius_km, "az_step_deg": args.az_step_deg,
                    "horizon_deg": [round(a, 3) for a in horizon]}, f)
     print(f"wrote {args.out}: {len(horizon)} azimuths, "
