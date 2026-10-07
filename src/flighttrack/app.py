@@ -16,6 +16,7 @@ from flighttrack.store import Store
 from flighttrack.recorder import Recorder
 from flighttrack.enrichment import fetch_flight, fetch_photo
 from flighttrack.faa import FaaLookup
+from flighttrack.horizon import Horizon
 
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
@@ -74,7 +75,8 @@ def create_app(settings: Settings) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.settings = settings
-        app.state.tracker = Tracker(settings.receiver, settings.stale_timeout_s)
+        app.state.tracker = Tracker(settings.receiver, settings.stale_timeout_s,
+                                    horizon=Horizon.load(settings.horizon.path))
         app.state.manager = ConnectionManager()
         app.state.source = build_source(settings)
         app.state.store = Store(settings.db.path)

@@ -99,3 +99,19 @@ def test_positionless_excluded_from_json_but_in_snapshot(rx):
     j = t.to_json()
     assert [a["icao"] for a in j["aircraft"]] == ["aaa"]
     assert j["receiver"]["lat"] == 40.0
+
+
+from flighttrack.horizon import Horizon
+
+
+def test_visible_flows_to_snapshot_and_json(rx):
+    t = Tracker(rx, stale_timeout_s=30, horizon=Horizon(90.0, [0, 0, 0, 0]))
+    t.update([raw("aaa", lat=40.05, alt=35000)], now=100.0)
+    assert t.snapshot()[0].visible is True
+    assert t.to_json()["aircraft"][0]["visible"] is True
+
+
+def test_no_horizon_means_not_visible(rx):
+    t = Tracker(rx, stale_timeout_s=30)            # default horizon=None
+    t.update([raw("aaa", lat=40.05, alt=35000)], now=100.0)
+    assert t.snapshot()[0].visible is False

@@ -28,3 +28,8 @@ db:
 logging:
   snapshot_interval_s: 15.0   # seconds between stored track points per aircraft
   retention_days: 30          # positions older than this are pruned (contacts kept)
+
+# Optional terrain skyline for the "visible from here" indicator.
+# Build with: uv run python scripts/build_horizon.py
+# horizon:
+#   path: data/horizon.json
