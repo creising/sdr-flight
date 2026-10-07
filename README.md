@@ -122,6 +122,23 @@ uv run flighttrack                       # serves http://127.0.0.1:8000
 Open **http://127.0.0.1:8000** — synthetic planes orbit your location. The stats page
 is at **/stats**.
 
+### Optional: "visible from here" indicator
+
+Aircraft that are above your **local terrain skyline** (not just a flat horizon) can be
+highlighted with a glowing halo on the map and a `VISIBLE` badge in the list. Build a
+one-time terrain horizon profile for your receiver, then point `config.yaml` at it:
+
+```bash
+uv run python scripts/build_horizon.py     # reads receiver lat/lon from config.yaml,
+                                            # downloads SRTM tiles, writes data/horizon.json
+# then in config.yaml:
+#   horizon:
+#     path: data/horizon.json
+```
+
+The profile is specific to your receiver location — **regenerate it whenever you change the
+receiver coordinates**. Without a profile the feature is simply off.
+
 ---
 
 ## Full deployment (SDR + dump1090)

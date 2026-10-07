@@ -21,3 +21,6 @@ captures/
 
 # Superpowers execution workspace
 .superpowers/
+
+# SRTM elevation tile cache for scripts/build_horizon.py (large, regenerable)
+.srtm_cache/
